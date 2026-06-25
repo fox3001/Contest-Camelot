@@ -6,6 +6,6 @@ buildCommand = "pnpm run build:railway"
 [deploy]
 startCommand = "pnpm run start"
 healthcheckPath = "/api/healthz"
-healthcheckTimeout = 30
+healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
