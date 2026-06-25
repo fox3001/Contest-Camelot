@@ -1,5 +1,6 @@
 [build]
-builder = "nixpacks"
+builder = "NIXPACKS"
+nixpacksConfigPath = "nixpacks.toml"
 buildCommand = "corepack enable && pnpm install --frozen-lockfile && pnpm run build:railway"
 
 [deploy]
