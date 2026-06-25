@@ -1,0 +1,482 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Costume voting app API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: session
+    description: Voting session
+  - name: voter
+    description: Voter registration
+  - name: costume
+    description: Costumes in competition
+  - name: vote
+    description: Voting
+  - name: admin
+    description: Admin operations
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /sessions/active:
+    get:
+      operationId: getActiveSession
+      tags: [session]
+      summary: Get the currently active voting session
+      responses:
+        "200":
+          description: Active session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          description: No active session
+
+  /voters:
+    post:
+      operationId: registerVoter
+      tags: [voter]
+      summary: Register as a voter with a nickname
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoterInput"
+      responses:
+        "201":
+          description: Voter registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoterRegistration"
+        "409":
+          description: Nickname already taken
+
+  /costumes:
+    get:
+      operationId: listCostumes
+      tags: [costume]
+      summary: List all costumes for the active session
+      responses:
+        "200":
+          description: List of costumes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Costume"
+
+  /votes:
+    post:
+      operationId: submitVotes
+      tags: [vote]
+      summary: Submit votes for costumes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoteSubmission"
+      responses:
+        "201":
+          description: Votes recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteResult"
+        "403":
+          description: Voting closed or already voted
+        "404":
+          description: Voter not found
+
+  /reset:
+    post:
+      operationId: resetEverything
+      tags: [admin]
+      summary: Reset all data and create a new session (password protected)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password, sessionName]
+              properties:
+                password:
+                  type: string
+                sessionName:
+                  type: string
+      responses:
+        "201":
+          description: New session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "401":
+          description: Wrong reset password
+
+  /admin/login:
+    post:
+      operationId: adminLogin
+      tags: [admin]
+      summary: Admin login with password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginInput"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminToken"
+        "401":
+          description: Wrong password
+
+  /admin/results:
+    get:
+      operationId: getResults
+      tags: [admin]
+      summary: Get live exit poll results, top 5 costumes
+      parameters:
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Live results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultsSummary"
+        "401":
+          description: Unauthorized
+
+  /admin/sessions:
+    post:
+      operationId: createSession
+      tags: [admin]
+      summary: Create a new voting session
+      parameters:
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionInput"
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+
+  /admin/sessions/{id}/close:
+    put:
+      operationId: closeSession
+      tags: [admin]
+      summary: Close the voting session (no more votes accepted)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          description: Session not found
+
+  /admin/votes:
+    delete:
+      operationId: resetVotes
+      tags: [admin]
+      summary: Delete all votes and voters for the current session
+      parameters:
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Votes reset
+
+  /admin/costumes:
+    delete:
+      operationId: resetCostumes
+      tags: [admin]
+      summary: Delete all costumes (and votes) for the current session
+      parameters:
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Costumes reset
+    get:
+      operationId: listAdminCostumes
+      tags: [admin]
+      summary: List all costumes (admin view, with full stats)
+      parameters:
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of costumes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Costume"
+    post:
+      operationId: createCostume
+      tags: [admin]
+      summary: Add a costume to the active session
+      parameters:
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CostumeInput"
+      responses:
+        "201":
+          description: Costume created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Costume"
+
+  /admin/costumes/{id}:
+    delete:
+      operationId: deleteCostume
+      tags: [admin]
+      summary: Remove a costume
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+
+    Session:
+      type: object
+      required: [id, name, isOpen, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        isOpen:
+          type: boolean
+        createdAt:
+          type: string
+
+    SessionInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    Costume:
+      type: object
+      required: [id, sessionId, name, imagePath, displayOrder]
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: integer
+        name:
+          type: string
+        imagePath:
+          type: string
+        displayOrder:
+          type: integer
+
+    CostumeInput:
+      type: object
+      required: [name, imagePath, displayOrder]
+      properties:
+        name:
+          type: string
+        imagePath:
+          type: string
+        displayOrder:
+          type: integer
+
+    VoterInput:
+      type: object
+      required: [nickname, sessionId]
+      properties:
+        nickname:
+          type: string
+        sessionId:
+          type: integer
+
+    VoterRegistration:
+      type: object
+      required: [id, nickname, sessionId, token]
+      properties:
+        id:
+          type: integer
+        nickname:
+          type: string
+        sessionId:
+          type: integer
+        token:
+          type: string
+
+    VoteSubmission:
+      type: object
+      required: [voterToken, votes]
+      properties:
+        voterToken:
+          type: string
+        votes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SingleVote"
+
+    SingleVote:
+      type: object
+      required: [costumeId, score]
+      properties:
+        costumeId:
+          type: integer
+        score:
+          type: integer
+          minimum: 1
+          maximum: 5
+
+    VoteResult:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    AdminLoginInput:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+
+    AdminToken:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+
+    CostumeResult:
+      type: object
+      required: [id, name, imagePath, totalVotes, sumScores, percentage, rank]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        imagePath:
+          type: string
+        totalVotes:
+          type: integer
+        sumScores:
+          type: integer
+        percentage:
+          type: number
+        rank:
+          type: integer
+
+    ResultsSummary:
+      type: object
+      required: [sessionId, sessionName, isOpen, totalVoters, top5, allCostumes]
+      properties:
+        sessionId:
+          type: integer
+        sessionName:
+          type: string
+        isOpen:
+          type: boolean
+        totalVoters:
+          type: integer
+        top5:
+          type: array
+          items:
+            $ref: "#/components/schemas/CostumeResult"
+        allCostumes:
+          type: array
+          items:
+            $ref: "#/components/schemas/CostumeResult"
