@@ -39,8 +39,8 @@ if (process.env.NODE_ENV === "production") {
 
   app.use(express.static(staticDir));
 
-  // Express 5 requires /{*path} instead of * for wildcard routes
-  app.get("/{*path}", (_req, res) => {
+  // Express 5 + path-to-regexp v8 requires named wildcard parameter
+  app.get("/{*splat}", (_req, res) => {
     res.sendFile(path.join(staticDir, "index.html"));
   });
 }
