@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGetActiveSession, getGetActiveSessionQueryKey, useRegisterVoter } from "@workspace/api-client-react";
-import logo from "@assets/logo_ballo_dark_glow_1782294241374-jfuYTOf4.png.png";
+import logo from "@assets/logo_ballo_dark_glow_1782294241374-jfuYTOf4.png";
 
 function NoSessionScreen({ onSessionCreated }: { onSessionCreated: () => void }) {
   const [showModal, setShowModal] = useState(false);
