@@ -10,6 +10,60 @@ import { useQueryClient } from "@tanstack/react-query";
 
 const MEDAL = ["bg-primary text-primary-foreground", "bg-zinc-300/30 text-zinc-200", "bg-amber-700/30 text-amber-400"];
 
+function ImageLightbox({ src, name, onClose }: { src: string; name: string; onClose: () => void }) {
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.85, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.85, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 28 }}
+        onClick={(e) => e.stopPropagation()}
+        className="relative max-w-2xl w-full"
+      >
+        <img
+          src={src}
+          alt={name}
+          className="w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl"
+        />
+        <p className="text-center text-white/80 text-sm mt-3 font-medium">{name}</p>
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition text-lg leading-none"
+          title="Chiudi"
+        >
+          ×
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function CostumeThumbnail({ imagePath, name, onOpen }: { imagePath?: string; name: string; onOpen: () => void }) {
+  if (!imagePath) return null;
+  return (
+    <button
+      onClick={onOpen}
+      className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-border/60 hover:border-primary/60 transition focus:outline-none focus:ring-2 focus:ring-primary"
+      title={`Vedi immagine: ${name}`}
+    >
+      <img src={imagePath} alt={name} className="w-full h-full object-cover" />
+    </button>
+  );
+}
+
 function ConfirmModal({
   title,
   message,
@@ -116,6 +170,7 @@ export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const [modal, setModal] = useState<Modal>(null);
   const [isResetting, setIsResetting] = useState(false);
+  const [lightboxCostume, setLightboxCostume] = useState<{ imagePath: string; name: string } | null>(null);
   const token = localStorage.getItem("adminToken") ?? "";
   const queryClient = useQueryClient();
 
@@ -170,7 +225,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // allCostumes comes from server; rest = positions 6+
   const all: any[] = (results as any)?.allCostumes ?? results?.top5 ?? [];
   const top5 = all.slice(0, 5);
   const rest = all.slice(5);
@@ -259,6 +313,13 @@ export default function AdminDashboard() {
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${MEDAL[i] ?? "bg-muted text-muted-foreground"}`}>
                           {c.rank}
                         </div>
+                        {c.imagePath && (
+                          <CostumeThumbnail
+                            imagePath={c.imagePath}
+                            name={c.name}
+                            onOpen={() => setLightboxCostume({ imagePath: c.imagePath, name: c.name })}
+                          />
+                        )}
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-foreground truncate">{c.name}</p>
                           <div className="flex items-center gap-3 mt-0.5">
@@ -292,6 +353,13 @@ export default function AdminDashboard() {
                   {rest.map((c: any) => (
                     <div key={c.id} className="bg-card/60 border border-border/60 rounded-xl px-4 py-3 flex items-center gap-3">
                       <span className="text-sm text-muted-foreground w-6 text-center shrink-0">{c.rank}</span>
+                      {c.imagePath && (
+                        <CostumeThumbnail
+                          imagePath={c.imagePath}
+                          name={c.name}
+                          onOpen={() => setLightboxCostume({ imagePath: c.imagePath, name: c.name })}
+                        />
+                      )}
                       <span className="flex-1 text-sm text-foreground truncate">{c.name}</span>
                       <span className="text-xs text-muted-foreground shrink-0">{c.totalVotes} voti</span>
                       <span className="text-sm font-medium text-primary shrink-0">{c.percentage}%</span>
@@ -345,6 +413,13 @@ export default function AdminDashboard() {
             onConfirm={handleNewSession}
             onCancel={() => setModal(null)}
             isPending={isResetting}
+          />
+        )}
+        {lightboxCostume && (
+          <ImageLightbox
+            src={lightboxCostume.imagePath}
+            name={lightboxCostume.name}
+            onClose={() => setLightboxCostume(null)}
           />
         )}
       </AnimatePresence>
