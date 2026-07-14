@@ -29,7 +29,7 @@ function StarPattern() {
         inset: 0,
         zIndex: 0,
         pointerEvents: "none",
-        backgroundImage: "url(/stars-pattern.jpg)",
+        backgroundImage: "url(/pattern 1.2.jpg)",
         backgroundSize: "520px 520px",
         backgroundRepeat: "repeat",
         mixBlendMode: "screen",
