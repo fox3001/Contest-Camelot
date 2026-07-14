@@ -34,7 +34,7 @@ function StarPattern() {
         backgroundRepeat: "repeat",
         mixBlendMode: "screen",
         opacity: 0.07,
-        animation: "stars-scroll 60s linear infinite",
+        animation: "stars-scroll 40s linear infinite",
       }}
     />
   );
