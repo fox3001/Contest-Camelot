@@ -30,7 +30,7 @@ function StarPattern() {
         zIndex: 0,
         pointerEvents: "none",
         backgroundImage: "url(/pattern%201.2.jpg)",
-        backgroundSize: "364px 364px",
+        backgroundSize: "327px 327px",
         backgroundRepeat: "repeat",
         mixBlendMode: "screen",
         opacity: 0.07,
