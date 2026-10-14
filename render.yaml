@@ -1,0 +1,22 @@
+# Deploy gratuito su Render (web service) + database Postgres esterno (es. Neon, piano Free).
+# Su Render: New → Blueprint → scegli questo repository.
+services:
+  - type: web
+    name: contest-camelot
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: corepack enable && corepack prepare pnpm@10.0.0 --activate && pnpm install --frozen-lockfile && pnpm run build:railway
+    startCommand: pnpm run start
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        sync: false # incolla la connection string di Neon (con ?sslmode=require)
+      - key: ADMIN_PASSWORD
+        sync: false # la password del pannello admin
+      - key: ADMIN_TOKEN
+        generateValue: true # chiave casuale generata da Render
