@@ -6,6 +6,8 @@ export const sessionsTable = pgTable("sessions", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   isOpen: boolean("is_open").notNull().default(true),
+  // Se true, per registrarsi serve un codice votante generato dall'admin
+  requireCode: boolean("require_code").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

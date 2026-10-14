@@ -71,6 +71,23 @@ export declare const votersTable: import("drizzle-orm/pg-core").PgTableWithColum
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        deviceId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "device_id";
+            tableName: "voters";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "voters";
@@ -95,6 +112,7 @@ export declare const insertVoterSchema: z.ZodObject<{
     sessionId: z.ZodInt;
     nickname: z.ZodString;
     token: z.ZodString;
+    deviceId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {
     out: {};
     in: {};

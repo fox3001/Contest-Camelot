@@ -54,6 +54,23 @@ export declare const sessionsTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        requireCode: import("drizzle-orm/pg-core").PgColumn<{
+            name: "require_code";
+            tableName: "sessions";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "sessions";
@@ -77,6 +94,7 @@ export declare const sessionsTable: import("drizzle-orm/pg-core").PgTableWithCol
 export declare const insertSessionSchema: z.ZodObject<{
     name: z.ZodString;
     isOpen: z.ZodOptional<z.ZodBoolean>;
+    requireCode: z.ZodOptional<z.ZodBoolean>;
 }, {
     out: {};
     in: {};

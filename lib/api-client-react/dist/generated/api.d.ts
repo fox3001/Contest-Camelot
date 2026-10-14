@@ -1,5 +1,5 @@
 import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import type { AdminLoginInput, AdminToken, Costume, CostumeInput, HealthStatus, ResultsSummary, Session, SessionInput, VoteResult, VoteSubmission, VoterInput, VoterRegistration } from './api.schemas';
+import type { AdminLoginInput, AdminToken, Costume, CostumeInput, HealthStatus, ResultsSummary, Session, SessionInput, SessionSettingsInput, VoteResult, VoteSubmission, VoterCode, VoterCodesCreated, VoterCodesInput, VoterInput, VoterRegistration } from './api.schemas';
 import { customFetch } from '../custom-fetch';
 import type { ErrorType, BodyType } from '../custom-fetch';
 type AwaitedInput<T> = PromiseLike<T> | T;
@@ -231,6 +231,131 @@ export declare const useCloseSession: <TError = ErrorType<void>, TContext = unkn
 }) => UseMutationResult<Awaited<ReturnType<typeof closeSession>>, TError, {
     id: number;
 }, TContext>;
+export declare const getReopenSessionUrl: (id: number) => string;
+/**
+ * @summary Reopen a closed session (closes any other open session)
+ */
+export declare const reopenSession: (id: number, options?: RequestInit) => Promise<Session>;
+export declare const getReopenSessionMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof reopenSession>>, TError, {
+        id: number;
+    }, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof reopenSession>>, TError, {
+    id: number;
+}, TContext>;
+export type ReopenSessionMutationResult = NonNullable<Awaited<ReturnType<typeof reopenSession>>>;
+export type ReopenSessionMutationError = ErrorType<unknown>;
+/**
+* @summary Reopen a closed session (closes any other open session)
+*/
+export declare const useReopenSession: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof reopenSession>>, TError, {
+        id: number;
+    }, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof reopenSession>>, TError, {
+    id: number;
+}, TContext>;
+export declare const getUpdateSessionSettingsUrl: (id: number) => string;
+/**
+ * @summary Update session settings (voter codes required or not)
+ */
+export declare const updateSessionSettings: (id: number, sessionSettingsInput: SessionSettingsInput, options?: RequestInit) => Promise<Session>;
+export declare const getUpdateSessionSettingsMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateSessionSettings>>, TError, {
+        id: number;
+        data: BodyType<SessionSettingsInput>;
+    }, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updateSessionSettings>>, TError, {
+    id: number;
+    data: BodyType<SessionSettingsInput>;
+}, TContext>;
+export type UpdateSessionSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateSessionSettings>>>;
+export type UpdateSessionSettingsMutationBody = BodyType<SessionSettingsInput>;
+export type UpdateSessionSettingsMutationError = ErrorType<unknown>;
+/**
+* @summary Update session settings (voter codes required or not)
+*/
+export declare const useUpdateSessionSettings: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateSessionSettings>>, TError, {
+        id: number;
+        data: BodyType<SessionSettingsInput>;
+    }, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updateSessionSettings>>, TError, {
+    id: number;
+    data: BodyType<SessionSettingsInput>;
+}, TContext>;
+export declare const getListVoterCodesUrl: () => string;
+/**
+ * @summary List voter codes of the current session
+ */
+export declare const listVoterCodes: (options?: RequestInit) => Promise<VoterCode[]>;
+export declare const getListVoterCodesQueryKey: () => readonly ["/api/admin/codes"];
+export declare const getListVoterCodesQueryOptions: <TData = Awaited<ReturnType<typeof listVoterCodes>>, TError = ErrorType<unknown>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listVoterCodes>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseQueryOptions<Awaited<ReturnType<typeof listVoterCodes>>, TError, TData> & {
+    queryKey: QueryKey;
+};
+export type ListVoterCodesQueryResult = NonNullable<Awaited<ReturnType<typeof listVoterCodes>>>;
+export type ListVoterCodesQueryError = ErrorType<unknown>;
+/**
+ * @summary List voter codes of the current session
+ */
+export declare function useListVoterCodes<TData = Awaited<ReturnType<typeof listVoterCodes>>, TError = ErrorType<unknown>>(options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listVoterCodes>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+};
+export declare const getCreateVoterCodesUrl: () => string;
+/**
+ * @summary Generate new single-use voter codes for the current session
+ */
+export declare const createVoterCodes: (voterCodesInput: VoterCodesInput, options?: RequestInit) => Promise<VoterCodesCreated>;
+export declare const getCreateVoterCodesMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createVoterCodes>>, TError, {
+        data: BodyType<VoterCodesInput>;
+    }, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof createVoterCodes>>, TError, {
+    data: BodyType<VoterCodesInput>;
+}, TContext>;
+export type CreateVoterCodesMutationResult = NonNullable<Awaited<ReturnType<typeof createVoterCodes>>>;
+export type CreateVoterCodesMutationBody = BodyType<VoterCodesInput>;
+export type CreateVoterCodesMutationError = ErrorType<unknown>;
+/**
+* @summary Generate new single-use voter codes for the current session
+*/
+export declare const useCreateVoterCodes: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof createVoterCodes>>, TError, {
+        data: BodyType<VoterCodesInput>;
+    }, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof createVoterCodes>>, TError, {
+    data: BodyType<VoterCodesInput>;
+}, TContext>;
+export declare const getDeleteUnusedVoterCodesUrl: () => string;
+/**
+ * @summary Delete voter codes not yet used
+ */
+export declare const deleteUnusedVoterCodes: (options?: RequestInit) => Promise<void>;
+export declare const getDeleteUnusedVoterCodesMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteUnusedVoterCodes>>, TError, void, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof deleteUnusedVoterCodes>>, TError, void, TContext>;
+export type DeleteUnusedVoterCodesMutationResult = NonNullable<Awaited<ReturnType<typeof deleteUnusedVoterCodes>>>;
+export type DeleteUnusedVoterCodesMutationError = ErrorType<unknown>;
+/**
+* @summary Delete voter codes not yet used
+*/
+export declare const useDeleteUnusedVoterCodes: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof deleteUnusedVoterCodes>>, TError, void, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof deleteUnusedVoterCodes>>, TError, void, TContext>;
 export declare const getResetVotesUrl: () => string;
 /**
  * @summary Delete all votes and voters for the current session
@@ -315,6 +440,37 @@ export declare const useCreateCostume: <TError = ErrorType<unknown>, TContext = 
     }, TContext>;
     request?: SecondParameter<typeof customFetch>;
 }) => UseMutationResult<Awaited<ReturnType<typeof createCostume>>, TError, {
+    data: BodyType<CostumeInput>;
+}, TContext>;
+export declare const getUpdateCostumeUrl: (id: number) => string;
+/**
+ * @summary Edit a costume
+ */
+export declare const updateCostume: (id: number, costumeInput: CostumeInput, options?: RequestInit) => Promise<Costume>;
+export declare const getUpdateCostumeMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateCostume>>, TError, {
+        id: number;
+        data: BodyType<CostumeInput>;
+    }, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof updateCostume>>, TError, {
+    id: number;
+    data: BodyType<CostumeInput>;
+}, TContext>;
+export type UpdateCostumeMutationResult = NonNullable<Awaited<ReturnType<typeof updateCostume>>>;
+export type UpdateCostumeMutationBody = BodyType<CostumeInput>;
+export type UpdateCostumeMutationError = ErrorType<unknown>;
+/**
+* @summary Edit a costume
+*/
+export declare const useUpdateCostume: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateCostume>>, TError, {
+        id: number;
+        data: BodyType<CostumeInput>;
+    }, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof updateCostume>>, TError, {
+    id: number;
     data: BodyType<CostumeInput>;
 }, TContext>;
 export declare const getDeleteCostumeUrl: (id: number) => string;

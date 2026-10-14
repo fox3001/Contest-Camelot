@@ -11,7 +11,10 @@ export interface ResultsSummary {
   sessionId: number;
   sessionName: string;
   isOpen: boolean;
+  requireCode: boolean;
   totalVoters: number;
+  codesTotal: number;
+  codesUsed: number;
   top5: CostumeResult[];
   allCostumes: CostumeResult[];
 }

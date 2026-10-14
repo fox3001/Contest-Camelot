@@ -10,7 +10,8 @@ App di votazione per concorso costumi: i partecipanti entrano via QR code, scelg
 - `pnpm run build` — typecheck + build
 - `pnpm --filter @workspace/api-spec run codegen` — rigenera hook e schema Zod dall'OpenAPI spec
 - `pnpm --filter @workspace/db run push` — applica migrazioni DB (solo dev)
-- Env richiesti: `DATABASE_URL`, `ADMIN_PASSWORD` (default: `admin1234`), `ADMIN_TOKEN` (default: `super-secret-admin-token`)
+- Env richiesti: `DATABASE_URL`, `ADMIN_PASSWORD` (obbligatoria, nessun default). Consigliata `ADMIN_TOKEN` (chiave di firma dei login admin)
+- Lo schema DB si aggiorna da solo all'avvio (`lib/db/src/ensureSchema.ts`), anche su Railway
 
 ## Stack
 
@@ -32,16 +33,18 @@ App di votazione per concorso costumi: i partecipanti entrano via QR code, scelg
 
 ## Architecture decisions
 
-- Auth admin via token fisso in header `x-admin-token` (semplice, no JWT)
-- Voter identificato da token random 64 char in localStorage, nessun account
-- Exit poll: percentuale calcolata su somma totale dei punteggi (non numero di voti)
-- Una sola sessione attiva alla volta; creare nuova sessione chiude la precedente
-- Password e token admin configurabili via env `ADMIN_PASSWORD` / `ADMIN_TOKEN`
+- Auth admin: login con `ADMIN_PASSWORD` → token firmato HMAC (chiave `ADMIN_TOKEN`) con scadenza 12 h, header `x-admin-token`; max 8 tentativi sbagliati per IP ogni 10 minuti
+- Votante: token random in localStorage + id dispositivo casuale; un votante per dispositivo per sessione; nickname unici (senza distinzione maiuscole)
+- Codici votante opzionali (monouso, 5 caratteri) attivabili per sessione da Gestione
+- Classifica: media bayesiana (peso 5 voti alla media generale), non somma dei punti — vedi `artifacts/api-server/src/lib/ranking.ts`
+- Ordine dei costumi mescolato per ogni votante (stabile per lo stesso votante)
+- Una sola sessione aperta alla volta; nuova sessione chiude la precedente ma NON cancella nulla; una sessione chiusa si può riaprire
+- Nessun reset pubblico: la rotta `/api/reset` è stata rimossa
 
 ## Product
 
-- **Votanti**: nickname → vota 1-5 ogni costume → grazie. Se votazioni chiuse → schermata "attendi l'araldo"
-- **Admin**: login con password → dashboard live (top 5, %, n.voti, somma) → chiudi votazioni → gestisci costumi
+- **Votanti**: nickname (+ codice se richiesto) → vota 1-5 ogni costume, con ricerca → grazie. Se votazioni chiuse → schermata "attendi l'araldo"
+- **Admin**: login con password → dashboard live (top 5, media, n.voti, punteggio) → chiudi/riapri votazioni → gestisci costumi (aggiungi, modifica, elimina con conferma) e codici votante (genera, stampa, CSV)
 
 ## User preferences
 
@@ -49,8 +52,8 @@ _Populate as you build._
 
 ## Gotchas
 
-- Il token admin di default è `super-secret-admin-token` — cambiarlo in produzione via env `ADMIN_TOKEN`
-- Password admin di default: `admin1234` — cambiare via env `ADMIN_PASSWORD`
+- Senza `ADMIN_PASSWORD` il login admin risponde 503
+- Il pulsante "Admin" non è più visibile ai votanti: il pannello si apre da `/admin`
 - Le grafiche PNG vanno in `attached_assets/grafiche/` e sono servite tramite il proxy
 
 ## Pointers

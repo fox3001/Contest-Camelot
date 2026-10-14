@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useAdminLogin } from "@workspace/api-client-react";
+import { setAdminToken } from "@/lib/storage";
 
 export default function AdminLogin() {
   const [password, setPassword] = useState("");
@@ -17,11 +18,17 @@ export default function AdminLogin() {
       { data: { password } },
       {
         onSuccess: (data) => {
-          localStorage.setItem("adminToken", data.token);
+          setAdminToken(data.token);
           setLocation("/admin/dashboard");
         },
-        onError: () => {
-          setError("Password errata");
+        onError: (err: any) => {
+          setError(
+            err?.status === 429
+              ? "Troppi tentativi. Riprova tra qualche minuto."
+              : err?.status === 503
+                ? "Password admin non configurata sul server."
+                : "Password errata",
+          );
           setPassword("");
         },
       }

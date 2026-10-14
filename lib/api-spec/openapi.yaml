@@ -109,33 +109,6 @@ paths:
         "404":
           description: Voter not found
 
-  /reset:
-    post:
-      operationId: resetEverything
-      tags: [admin]
-      summary: Reset all data and create a new session (password protected)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [password, sessionName]
-              properties:
-                password:
-                  type: string
-                sessionName:
-                  type: string
-      responses:
-        "201":
-          description: New session created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Session"
-        "401":
-          description: Wrong reset password
-
   /admin/login:
     post:
       operationId: adminLogin
@@ -229,6 +202,119 @@ paths:
         "404":
           description: Session not found
 
+  /admin/sessions/{id}/reopen:
+    put:
+      operationId: reopenSession
+      tags: [admin]
+      summary: Reopen a closed session (closes any other open session)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session reopened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+
+  /admin/sessions/{id}/settings:
+    put:
+      operationId: updateSessionSettings
+      tags: [admin]
+      summary: Update session settings (voter codes required or not)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SessionSettingsInput"
+      responses:
+        "200":
+          description: Session updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+
+  /admin/codes:
+    get:
+      operationId: listVoterCodes
+      tags: [admin]
+      summary: List voter codes of the current session
+      parameters:
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Voter codes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VoterCode"
+    post:
+      operationId: createVoterCodes
+      tags: [admin]
+      summary: Generate new single-use voter codes for the current session
+      parameters:
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoterCodesInput"
+      responses:
+        "201":
+          description: Codes created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoterCodesCreated"
+
+  /admin/codes/unused:
+    delete:
+      operationId: deleteUnusedVoterCodes
+      tags: [admin]
+      summary: Delete voter codes not yet used
+      parameters:
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
   /admin/votes:
     delete:
       operationId: resetVotes
@@ -302,6 +388,34 @@ paths:
                 $ref: "#/components/schemas/Costume"
 
   /admin/costumes/{id}:
+    put:
+      operationId: updateCostume
+      tags: [admin]
+      summary: Edit a costume
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CostumeInput"
+      responses:
+        "200":
+          description: Costume updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Costume"
     delete:
       operationId: deleteCostume
       tags: [admin]
@@ -332,13 +446,15 @@ components:
 
     Session:
       type: object
-      required: [id, name, isOpen, createdAt]
+      required: [id, name, isOpen, requireCode, createdAt]
       properties:
         id:
           type: integer
         name:
           type: string
         isOpen:
+          type: boolean
+        requireCode:
           type: boolean
         createdAt:
           type: string
@@ -378,12 +494,16 @@ components:
 
     VoterInput:
       type: object
-      required: [nickname, sessionId]
+      required: [nickname, sessionId, deviceId]
       properties:
         nickname:
           type: string
         sessionId:
           type: integer
+        deviceId:
+          type: string
+        code:
+          type: string
 
     VoterRegistration:
       type: object
@@ -443,7 +563,7 @@ components:
 
     CostumeResult:
       type: object
-      required: [id, name, imagePath, totalVotes, sumScores, percentage, rank]
+      required: [id, name, imagePath, totalVotes, sumScores, avgScore, weightedScore, rank]
       properties:
         id:
           type: integer
@@ -455,14 +575,16 @@ components:
           type: integer
         sumScores:
           type: integer
-        percentage:
+        avgScore:
+          type: number
+        weightedScore:
           type: number
         rank:
           type: integer
 
     ResultsSummary:
       type: object
-      required: [sessionId, sessionName, isOpen, totalVoters, top5, allCostumes]
+      required: [sessionId, sessionName, isOpen, requireCode, totalVoters, codesTotal, codesUsed, top5, allCostumes]
       properties:
         sessionId:
           type: integer
@@ -470,7 +592,13 @@ components:
           type: string
         isOpen:
           type: boolean
+        requireCode:
+          type: boolean
         totalVoters:
+          type: integer
+        codesTotal:
+          type: integer
+        codesUsed:
           type: integer
         top5:
           type: array
@@ -480,3 +608,37 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CostumeResult"
+
+    SessionSettingsInput:
+      type: object
+      required: [requireCode]
+      properties:
+        requireCode:
+          type: boolean
+
+    VoterCode:
+      type: object
+      required: [code, used, nickname]
+      properties:
+        code:
+          type: string
+        used:
+          type: boolean
+        nickname:
+          type: [string, "null"]
+
+    VoterCodesInput:
+      type: object
+      required: [count]
+      properties:
+        count:
+          type: integer
+          minimum: 1
+          maximum: 500
+
+    VoterCodesCreated:
+      type: object
+      required: [created]
+      properties:
+        created:
+          type: integer

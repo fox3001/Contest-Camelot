@@ -8,5 +8,7 @@
 export interface VoterInput {
     nickname: string;
     sessionId: number;
+    deviceId: string;
+    code?: string;
 }
 //# sourceMappingURL=voterInput.d.ts.map

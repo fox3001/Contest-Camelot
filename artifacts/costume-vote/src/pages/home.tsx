@@ -1,151 +1,78 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useGetActiveSession, getGetActiveSessionQueryKey, useRegisterVoter } from "@workspace/api-client-react";
 import logo from "@assets/logo_ballo_dark_glow_1782294241374-jfuYTOf4.png";
+import { getDeviceId, getLastNickname, getStoredVoter, setStoredVoter } from "@/lib/storage";
 
-function NoSessionScreen({ onSessionCreated }: { onSessionCreated: () => void }) {
-  const [showModal, setShowModal] = useState(false);
-  const [password, setPassword] = useState("");
-  const [sessionName, setSessionName] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+const ERROR_MESSAGES: Record<string, string> = {
+  nickname_taken: "Nickname già in uso, scegline un altro.",
+  code_required: "Serve il codice votante che trovi sul tuo biglietto.",
+  code_invalid: "Codice non valido. Controlla di averlo scritto bene.",
+  code_used: "Questo codice è già stato usato.",
+  invalid_input: "Nickname non valido (massimo 30 caratteri).",
+  invalid_device: "Ricarica la pagina e riprova.",
+};
 
-  const handleReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!password.trim() || !sessionName.trim()) {
-      setError("Compila tutti i campi");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const res = await fetch("/api/reset", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, sessionName: sessionName.trim() }),
-      });
-      if (res.status === 401) {
-        setError("Password errata");
-        setLoading(false);
-        return;
-      }
-      if (!res.ok) {
-        setError("Errore del server. Riprova.");
-        setLoading(false);
-        return;
-      }
-      onSessionCreated();
-    } catch {
-      setError("Errore di connessione. Riprova.");
-      setLoading(false);
-    }
-  };
-
+function WaitingScreen() {
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center px-6 text-center">
       <img src={logo} alt="Camelot's Tales" className="w-48 h-48 object-contain mb-6" />
-      <h1 className="text-xl font-serif text-primary mb-3">Nessuna sessione attiva</h1>
-      <p className="text-muted-foreground text-sm mb-8">Le votazioni non sono ancora iniziate.</p>
-
-      <button
-        onClick={() => setShowModal(true)}
-        className="bg-primary text-primary-foreground font-semibold rounded-xl px-6 py-3 text-sm hover:opacity-90 active:scale-[0.97] transition-all shadow"
-      >
-        Nuova Sessione
-      </button>
-
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center px-6 z-50"
-            onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 16 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 16 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className="bg-card border border-border rounded-2xl p-6 w-full max-w-xs shadow-xl"
-            >
-              <h2 className="text-lg font-serif text-primary mb-1">Nuova Sessione</h2>
-              <p className="text-xs text-muted-foreground mb-5">Resetta tutto e avvia una nuova votazione.</p>
-
-              <form onSubmit={handleReset} className="flex flex-col gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1.5">Nome sessione</label>
-                  <input
-                    type="text"
-                    value={sessionName}
-                    onChange={(e) => { setSessionName(e.target.value); setError(""); }}
-                    placeholder="es. Malacontest 2026"
-                    maxLength={60}
-                    className="w-full bg-background border border-input rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm transition"
-                    autoComplete="off"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1.5">Password di reset</label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => { setPassword(e.target.value); setError(""); }}
-                    placeholder="••••••••"
-                    className="w-full bg-background border border-input rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm transition"
-                    autoComplete="current-password"
-                  />
-                </div>
-
-                {error && (
-                  <motion.p
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-xs text-destructive"
-                  >
-                    {error}
-                  </motion.p>
-                )}
-
-                <div className="flex gap-2 mt-1">
-                  <button
-                    type="button"
-                    onClick={() => { setShowModal(false); setError(""); setPassword(""); setSessionName(""); }}
-                    className="flex-1 bg-muted text-muted-foreground font-medium rounded-xl py-3 text-sm hover:opacity-80 transition"
-                  >
-                    Annulla
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="flex-1 bg-primary text-primary-foreground font-semibold rounded-xl py-3 text-sm hover:opacity-90 active:scale-[0.97] transition-all disabled:opacity-50"
-                  >
-                    {loading ? "..." : "Avvia"}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <h1 className="text-xl font-serif text-primary mb-3">Le votazioni non sono ancora iniziate</h1>
+      <p className="text-muted-foreground text-sm">Tieni aperta questa pagina: si aggiornerà da sola appena si apre il voto.</p>
     </div>
   );
 }
 
 export default function Home() {
-  const [nickname, setNickname] = useState(() => localStorage.getItem("voterNickname") ?? "");
+  const [nickname, setNickname] = useState(() => getLastNickname());
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [, setLocation] = useLocation();
 
-  const { data: session, isLoading: sessionLoading } = useGetActiveSession({ query: { queryKey: getGetActiveSessionQueryKey(), refetchInterval: 4000 } });
+  const { data: session, isLoading: sessionLoading } = useGetActiveSession({
+    query: { queryKey: getGetActiveSessionQueryKey(), refetchInterval: 4000, retry: false },
+  });
   const { mutate: registerVoter, isPending } = useRegisterVoter();
 
+  const stored = getStoredVoter();
+  const alreadyRegistered = !!(session && stored && stored.sessionId === String(session.id));
+
   useEffect(() => {
-    if (!session) return;
-    if (!session.isOpen) { setLocation("/closed"); return; }
+    if (session && !session.isOpen) setLocation("/closed");
   }, [session, setLocation]);
+
+  const submit = (attempt = 0) => {
+    if (!session) return;
+    registerVoter(
+      {
+        data: {
+          nickname: nickname.trim(),
+          sessionId: session.id,
+          deviceId: getDeviceId(),
+          ...(session.requireCode ? { code: code.trim().toUpperCase() } : {}),
+        },
+      },
+      {
+        onSuccess: (data) => {
+          setStoredVoter(data);
+          setLocation("/vote");
+        },
+        onError: (err: any) => {
+          const key = err?.data?.error as string | undefined;
+          if (err?.status === 403 && key === "voting_closed") {
+            setLocation("/closed");
+          } else if (key === "retry" && attempt < 1) {
+            submit(attempt + 1);
+          } else if (key && ERROR_MESSAGES[key]) {
+            setError(ERROR_MESSAGES[key]);
+          } else {
+            setError("Errore di connessione. Riprova.");
+          }
+        },
+      },
+    );
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,31 +80,12 @@ export default function Home() {
       setError("Inserisci un nickname");
       return;
     }
-    if (!session) return;
-    if (!session.isOpen) {
-      setLocation("/closed");
+    if (session?.requireCode && !code.trim()) {
+      setError("Inserisci il codice votante");
       return;
     }
     setError("");
-    registerVoter(
-      { data: { nickname: nickname.trim(), sessionId: session.id } },
-      {
-        onSuccess: (data) => {
-          localStorage.setItem("voterToken", data.token);
-          localStorage.setItem("voterId", String(data.id));
-          localStorage.setItem("voterNickname", data.nickname);
-          localStorage.setItem("sessionId", String(data.sessionId));
-          setLocation("/vote");
-        },
-        onError: (err: any) => {
-          if (err?.status === 403) {
-            setLocation("/closed");
-          } else {
-            setError("Errore di connessione. Riprova.");
-          }
-        },
-      }
-    );
+    submit();
   };
 
   if (sessionLoading) {
@@ -197,13 +105,11 @@ export default function Home() {
     );
   }
 
-  if (!session) {
-    return <NoSessionScreen onSessionCreated={() => window.location.reload()} />;
-  }
+  if (!session) return <WaitingScreen />;
+  if (!session.isOpen) return null;
 
-  if (!session.isOpen) {
-    return null;
-  }
+  const inputClass =
+    "w-full bg-background border border-input rounded-xl px-4 py-3.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-base transition";
 
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center px-5 py-8 safe-area-inset">
@@ -213,7 +119,6 @@ export default function Home() {
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="w-full max-w-xs"
       >
-        {/* Logo grande */}
         <motion.div
           initial={{ opacity: 0, scale: 0.88 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -227,52 +132,89 @@ export default function Home() {
           />
         </motion.div>
 
-        {/* Form nickname */}
-        <motion.form
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45, duration: 0.5 }}
-          onSubmit={handleSubmit}
-          className="bg-card border border-border rounded-2xl p-5 shadow-md"
-        >
-          <label className="block text-sm font-medium text-foreground mb-2">
-            Il tuo nickname
-          </label>
-          <input
-            type="text"
-            value={nickname}
-            onChange={(e) => {
-              setNickname(e.target.value);
-              setError("");
-            }}
-            placeholder="es. Veneziano23"
-            maxLength={30}
-            className="w-full bg-background border border-input rounded-xl px-4 py-3.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-base transition"
-            autoComplete="off"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            inputMode="text"
-          />
-
-          {error && (
-            <motion.p
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-2 text-sm text-destructive"
-            >
-              {error}
-            </motion.p>
-          )}
-
-          <button
-            type="submit"
-            disabled={isPending || !nickname.trim()}
-            className="mt-4 w-full bg-primary text-primary-foreground font-semibold rounded-xl py-4 text-base hover:opacity-90 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow"
+        {alreadyRegistered ? (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45, duration: 0.5 }}
+            className="bg-card border border-border rounded-2xl p-5 shadow-md text-center"
           >
-            {isPending ? "Connessione..." : "Entra e Vota"}
-          </button>
-        </motion.form>
+            <p className="text-sm text-muted-foreground mb-1">Bentornato</p>
+            <p className="text-xl font-serif text-foreground mb-4">{stored!.nickname}</p>
+            <button
+              onClick={() => setLocation("/vote")}
+              className="w-full bg-primary text-primary-foreground font-semibold rounded-xl py-4 text-base hover:opacity-90 active:scale-[0.97] transition-all shadow"
+            >
+              Continua a votare
+            </button>
+          </motion.div>
+        ) : (
+          <motion.form
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45, duration: 0.5 }}
+            onSubmit={handleSubmit}
+            className="bg-card border border-border rounded-2xl p-5 shadow-md"
+          >
+            <label className="block text-sm font-medium text-foreground mb-2" htmlFor="nickname">
+              Il tuo nickname
+            </label>
+            <input
+              id="nickname"
+              type="text"
+              value={nickname}
+              onChange={(e) => {
+                setNickname(e.target.value);
+                setError("");
+              }}
+              placeholder="es. Veneziano23"
+              maxLength={30}
+              className={inputClass}
+              autoComplete="off"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+
+            {session.requireCode && (
+              <>
+                <label className="block text-sm font-medium text-foreground mt-4 mb-2" htmlFor="code">
+                  Codice votante
+                </label>
+                <input
+                  id="code"
+                  type="text"
+                  value={code}
+                  onChange={(e) => {
+                    setCode(e.target.value.toUpperCase());
+                    setError("");
+                  }}
+                  placeholder="es. K7M2Q"
+                  maxLength={8}
+                  className={`${inputClass} tracking-[0.3em] uppercase text-center`}
+                  autoComplete="off"
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+              </>
+            )}
+
+            {error && (
+              <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="mt-2 text-sm text-destructive">
+                {error}
+              </motion.p>
+            )}
+
+            <button
+              type="submit"
+              disabled={isPending || !nickname.trim()}
+              className="mt-4 w-full bg-primary text-primary-foreground font-semibold rounded-xl py-4 text-base hover:opacity-90 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow"
+            >
+              {isPending ? "Connessione..." : "Entra e Vota"}
+            </button>
+          </motion.form>
+        )}
 
         <motion.p
           initial={{ opacity: 0 }}
@@ -280,26 +222,8 @@ export default function Home() {
           transition={{ delay: 0.7, duration: 0.5 }}
           className="text-center text-xs text-muted-foreground mt-4"
         >
-          Nessun account richiesto. Solo il tuo nickname.
+          {session.requireCode ? "Un codice, un voto. Nessun account richiesto." : "Nessun account richiesto. Un voto per telefono."}
         </motion.p>
-
-        {/* Admin button — discreto in fondo */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.1, duration: 0.5 }}
-          className="flex justify-center mt-10"
-        >
-          <button
-            onClick={() => setLocation("/admin")}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors px-3 py-1.5 rounded-lg"
-          >
-            <svg viewBox="0 0 24 24" fill="none" className="w-3 h-3" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-            </svg>
-            Admin
-          </button>
-        </motion.div>
       </motion.div>
     </div>
   );

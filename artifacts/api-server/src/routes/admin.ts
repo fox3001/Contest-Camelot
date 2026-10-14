@@ -1,57 +1,85 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
+import { randomInt } from "crypto";
 import {
+  db,
   sessionsTable,
   costumesTable,
   votersTable,
   votesTable,
+  voterCodesTable,
 } from "@workspace/db";
-import { eq, desc, sql } from "drizzle-orm";
-
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "Malacontest";
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN ?? "super-secret-admin-token";
-
-function requireAdmin(req: any, res: any, next: any) {
-  const token = req.headers["x-admin-token"];
-  if (token !== ADMIN_TOKEN) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  next();
-}
+import { and, asc, eq, ne, sql } from "drizzle-orm";
+import {
+  checkPassword,
+  clearFailedLogins,
+  isLoginConfigured,
+  issueToken,
+  loginBlocked,
+  recordFailedLogin,
+  requireAdmin,
+} from "../lib/adminAuth";
+import { getCurrentSession, serializeSession } from "../lib/sessions";
+import { rankCostumes } from "../lib/ranking";
 
 const router = Router();
 
+const MAX_COSTUMES = 180;
+const MAX_CODES_PER_REQUEST = 500;
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // niente 0/O, 1/I
+const CODE_LENGTH = 5;
+
+// ---------------------------------------------------------------------------
+// Login
+// ---------------------------------------------------------------------------
+
 router.post("/login", async (req, res) => {
-  const { password } = req.body as { password: string };
-  if (password !== ADMIN_PASSWORD) {
+  const ip = req.ip ?? "unknown";
+  if (!isLoginConfigured()) {
+    res.status(503).json({ error: "ADMIN_PASSWORD non configurata sul server" });
+    return;
+  }
+  if (loginBlocked(ip)) {
+    res.status(429).json({ error: "Troppi tentativi, riprova tra qualche minuto" });
+    return;
+  }
+  const { password } = (req.body ?? {}) as { password?: unknown };
+  if (!checkPassword(password)) {
+    recordFailedLogin(ip);
     res.status(401).json({ error: "Wrong password" });
     return;
   }
-  res.json({ token: ADMIN_TOKEN });
+  clearFailedLogins(ip);
+  res.json({ token: issueToken() });
 });
 
-router.get("/results", requireAdmin, async (req, res) => {
-  try {
-    const [session] = await db
-      .select()
-      .from(sessionsTable)
-      .orderBy(desc(sessionsTable.createdAt))
-      .limit(1);
+router.use(requireAdmin);
 
+// ---------------------------------------------------------------------------
+// Risultati
+// ---------------------------------------------------------------------------
+
+router.get("/results", async (req, res) => {
+  try {
+    const session = await getCurrentSession();
     if (!session) {
       res.status(404).json({ error: "No session found" });
       return;
     }
 
-    const totalVotersResult = await db
+    const [{ count: totalVoters }] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(votersTable)
       .where(eq(votersTable.sessionId, session.id));
 
-    const totalVoters = totalVotersResult[0]?.count ?? 0;
+    const [codes] = await db
+      .select({
+        total: sql<number>`count(*)::int`,
+        used: sql<number>`count(${voterCodesTable.voterId})::int`,
+      })
+      .from(voterCodesTable)
+      .where(eq(voterCodesTable.sessionId, session.id));
 
-    const costumeStats = await db
+    const stats = await db
       .select({
         id: costumesTable.id,
         name: costumesTable.name,
@@ -62,29 +90,19 @@ router.get("/results", requireAdmin, async (req, res) => {
       .from(costumesTable)
       .leftJoin(votesTable, eq(votesTable.costumeId, costumesTable.id))
       .where(eq(costumesTable.sessionId, session.id))
-      .groupBy(costumesTable.id, costumesTable.name, costumesTable.imagePath)
-      .orderBy(desc(sql`coalesce(sum(${votesTable.score}), 0)`));
+      .groupBy(costumesTable.id, costumesTable.name, costumesTable.imagePath);
 
-    const totalSum = costumeStats.reduce((acc, c) => acc + (c.sumScores ?? 0), 0);
-
-    const allCostumes = costumeStats.map((c, i) => ({
-      id: c.id,
-      name: c.name,
-      imagePath: c.imagePath,
-      totalVotes: c.totalVotes ?? 0,
-      sumScores: c.sumScores ?? 0,
-      percentage: totalSum > 0 ? Math.round(((c.sumScores ?? 0) / totalSum) * 1000) / 10 : 0,
-      rank: i + 1,
-    }));
-
-    const top5 = allCostumes.slice(0, 5);
+    const allCostumes = rankCostumes(stats);
 
     res.json({
       sessionId: session.id,
       sessionName: session.name,
       isOpen: session.isOpen,
+      requireCode: session.requireCode,
       totalVoters,
-      top5,
+      codesTotal: codes?.total ?? 0,
+      codesUsed: codes?.used ?? 0,
+      top5: allCostumes.slice(0, 5),
       allCostumes,
     });
   } catch (err) {
@@ -93,31 +111,31 @@ router.get("/results", requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/sessions", requireAdmin, async (req, res) => {
+// ---------------------------------------------------------------------------
+// Sessioni (le vecchie restano in archivio: niente più cancellazione totale)
+// ---------------------------------------------------------------------------
+
+router.post("/sessions", async (req, res) => {
   try {
-    const { name } = req.body as { name: string };
-    if (!name) {
+    const { name } = (req.body ?? {}) as { name?: unknown };
+    const clean = typeof name === "string" ? name.trim() : "";
+    if (!clean || clean.length > 80) {
       res.status(400).json({ error: "name is required" });
       return;
     }
-    await db.update(sessionsTable).set({ isOpen: false });
-    const [session] = await db
-      .insert(sessionsTable)
-      .values({ name, isOpen: true })
-      .returning();
-    res.status(201).json({
-      id: session.id,
-      name: session.name,
-      isOpen: session.isOpen,
-      createdAt: session.createdAt.toISOString(),
+    const session = await db.transaction(async (tx) => {
+      await tx.update(sessionsTable).set({ isOpen: false });
+      const [created] = await tx.insert(sessionsTable).values({ name: clean, isOpen: true }).returning();
+      return created;
     });
+    res.status(201).json(serializeSession(session));
   } catch (err) {
     req.log.error({ err }, "Failed to create session");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-router.put("/sessions/:id/close", requireAdmin, async (req, res) => {
+router.put("/sessions/:id/close", async (req, res) => {
   try {
     const id = Number(req.params.id);
     const [session] = await db
@@ -125,43 +143,76 @@ router.put("/sessions/:id/close", requireAdmin, async (req, res) => {
       .set({ isOpen: false })
       .where(eq(sessionsTable.id, id))
       .returning();
-
     if (!session) {
       res.status(404).json({ error: "Session not found" });
       return;
     }
-
-    res.json({
-      id: session.id,
-      name: session.name,
-      isOpen: session.isOpen,
-      createdAt: session.createdAt.toISOString(),
-    });
+    res.json(serializeSession(session));
   } catch (err) {
     req.log.error({ err }, "Failed to close session");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-router.get("/costumes", requireAdmin, async (req, res) => {
+router.put("/sessions/:id/reopen", async (req, res) => {
   try {
-    const [session] = await db
-      .select()
-      .from(sessionsTable)
-      .orderBy(desc(sessionsTable.createdAt))
-      .limit(1);
+    const id = Number(req.params.id);
+    const session = await db.transaction(async (tx) => {
+      await tx.update(sessionsTable).set({ isOpen: false }).where(ne(sessionsTable.id, id));
+      const [s] = await tx.update(sessionsTable).set({ isOpen: true }).where(eq(sessionsTable.id, id)).returning();
+      return s;
+    });
+    if (!session) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+    res.json(serializeSession(session));
+  } catch (err) {
+    req.log.error({ err }, "Failed to reopen session");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
+router.put("/sessions/:id/settings", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { requireCode } = (req.body ?? {}) as { requireCode?: unknown };
+    if (typeof requireCode !== "boolean") {
+      res.status(400).json({ error: "requireCode must be boolean" });
+      return;
+    }
+    const [session] = await db
+      .update(sessionsTable)
+      .set({ requireCode })
+      .where(eq(sessionsTable.id, id))
+      .returning();
+    if (!session) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
+    res.json(serializeSession(session));
+  } catch (err) {
+    req.log.error({ err }, "Failed to update session settings");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Costumi
+// ---------------------------------------------------------------------------
+
+router.get("/costumes", async (req, res) => {
+  try {
+    const session = await getCurrentSession();
     if (!session) {
       res.json([]);
       return;
     }
-
     const costumes = await db
       .select()
       .from(costumesTable)
       .where(eq(costumesTable.sessionId, session.id))
-      .orderBy(costumesTable.displayOrder);
-
+      .orderBy(asc(costumesTable.displayOrder), asc(costumesTable.id));
     res.json(costumes);
   } catch (err) {
     req.log.error({ err }, "Failed to list costumes (admin)");
@@ -169,50 +220,37 @@ router.get("/costumes", requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/costumes", requireAdmin, async (req, res) => {
-  try {
-    const { name, imagePath, displayOrder } = req.body as {
-      name: string;
-      imagePath: string;
-      displayOrder: number;
-    };
+function readCostumeInput(body: any) {
+  const name = typeof body?.name === "string" ? body.name.trim() : "";
+  const imagePath = typeof body?.imagePath === "string" ? body.imagePath.trim() : "";
+  const displayOrder = Number.isFinite(Number(body?.displayOrder)) ? Math.trunc(Number(body.displayOrder)) : 0;
+  return { name, imagePath, displayOrder };
+}
 
+router.post("/costumes", async (req, res) => {
+  try {
+    const { name, imagePath, displayOrder } = readCostumeInput(req.body);
     if (!name || !imagePath) {
       res.status(400).json({ error: "name and imagePath are required" });
       return;
     }
-
-    const [session] = await db
-      .select()
-      .from(sessionsTable)
-      .orderBy(desc(sessionsTable.createdAt))
-      .limit(1);
-
+    const session = await getCurrentSession();
     if (!session) {
       res.status(404).json({ error: "No session found" });
       return;
     }
-
     const [{ count }] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(costumesTable)
       .where(eq(costumesTable.sessionId, session.id));
-
-    if (count >= 180) {
-      res.status(422).json({ error: "Limite massimo di 180 costumi raggiunto" });
+    if (count >= MAX_COSTUMES) {
+      res.status(422).json({ error: `Limite massimo di ${MAX_COSTUMES} costumi raggiunto` });
       return;
     }
-
     const [costume] = await db
       .insert(costumesTable)
-      .values({
-        sessionId: session.id,
-        name,
-        imagePath,
-        displayOrder: displayOrder ?? 0,
-      })
+      .values({ sessionId: session.id, name, imagePath, displayOrder })
       .returning();
-
     res.status(201).json(costume);
   } catch (err) {
     req.log.error({ err }, "Failed to create costume");
@@ -220,18 +258,49 @@ router.post("/costumes", requireAdmin, async (req, res) => {
   }
 });
 
-router.delete("/votes", requireAdmin, async (req, res) => {
+router.put("/costumes/:id", async (req, res) => {
   try {
-    const [session] = await db
-      .select()
-      .from(sessionsTable)
-      .orderBy(desc(sessionsTable.createdAt))
-      .limit(1);
+    const id = Number(req.params.id);
+    const { name, imagePath, displayOrder } = readCostumeInput(req.body);
+    if (!name || !imagePath) {
+      res.status(400).json({ error: "name and imagePath are required" });
+      return;
+    }
+    const [costume] = await db
+      .update(costumesTable)
+      .set({ name, imagePath, displayOrder })
+      .where(eq(costumesTable.id, id))
+      .returning();
+    if (!costume) {
+      res.status(404).json({ error: "Costume not found" });
+      return;
+    }
+    res.json(costume);
+  } catch (err) {
+    req.log.error({ err }, "Failed to update costume");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/costumes/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    await db.delete(costumesTable).where(eq(costumesTable.id, id));
+    res.status(204).end();
+  } catch (err) {
+    req.log.error({ err }, "Failed to delete costume");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Azzera voti/votanti o costumi della sola sessione corrente (non usati dalla UI)
+router.delete("/votes", async (req, res) => {
+  try {
+    const session = await getCurrentSession();
     if (!session) {
       res.status(404).json({ error: "No session found" });
       return;
     }
-    // Deleting voters cascades to votes automatically
     await db.delete(votersTable).where(eq(votersTable.sessionId, session.id));
     res.status(204).end();
   } catch (err) {
@@ -240,18 +309,13 @@ router.delete("/votes", requireAdmin, async (req, res) => {
   }
 });
 
-router.delete("/costumes", requireAdmin, async (req, res) => {
+router.delete("/costumes", async (req, res) => {
   try {
-    const [session] = await db
-      .select()
-      .from(sessionsTable)
-      .orderBy(desc(sessionsTable.createdAt))
-      .limit(1);
+    const session = await getCurrentSession();
     if (!session) {
       res.status(404).json({ error: "No session found" });
       return;
     }
-    // Deleting costumes cascades to votes; then clean up voters too
     await db.delete(costumesTable).where(eq(costumesTable.sessionId, session.id));
     await db.delete(votersTable).where(eq(votersTable.sessionId, session.id));
     res.status(204).end();
@@ -261,40 +325,88 @@ router.delete("/costumes", requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/reset", requireAdmin, async (req, res) => {
+// ---------------------------------------------------------------------------
+// Codici votante
+// ---------------------------------------------------------------------------
+
+function makeCode(): string {
+  let s = "";
+  for (let i = 0; i < CODE_LENGTH; i++) s += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
+  return s;
+}
+
+router.get("/codes", async (req, res) => {
   try {
-    const { name } = req.body as { name: string };
-    if (!name?.trim()) {
-      res.status(400).json({ error: "name is required" });
+    const session = await getCurrentSession();
+    if (!session) {
+      res.json([]);
       return;
     }
-    await db.delete(votesTable);
-    await db.delete(votersTable);
-    await db.delete(costumesTable);
-    await db.delete(sessionsTable);
-    const [session] = await db
-      .insert(sessionsTable)
-      .values({ name: name.trim(), isOpen: true })
-      .returning();
-    res.status(201).json({
-      id: session.id,
-      name: session.name,
-      isOpen: session.isOpen,
-      createdAt: session.createdAt.toISOString(),
-    });
+    const rows = await db
+      .select({
+        code: voterCodesTable.code,
+        nickname: votersTable.nickname,
+      })
+      .from(voterCodesTable)
+      .leftJoin(votersTable, eq(votersTable.id, voterCodesTable.voterId))
+      .where(eq(voterCodesTable.sessionId, session.id))
+      .orderBy(asc(voterCodesTable.id));
+    res.json(rows.map((r) => ({ code: r.code, used: r.nickname !== null, nickname: r.nickname ?? null })));
   } catch (err) {
-    req.log.error({ err }, "Failed to reset all data");
+    req.log.error({ err }, "Failed to list codes");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-router.delete("/costumes/:id", requireAdmin, async (req, res) => {
+router.post("/codes", async (req, res) => {
   try {
-    const id = Number(req.params.id);
-    await db.delete(costumesTable).where(eq(costumesTable.id, id));
+    const count = Math.trunc(Number((req.body ?? {}).count));
+    if (!Number.isInteger(count) || count < 1 || count > MAX_CODES_PER_REQUEST) {
+      res.status(400).json({ error: `count deve essere tra 1 e ${MAX_CODES_PER_REQUEST}` });
+      return;
+    }
+    const session = await getCurrentSession();
+    if (!session) {
+      res.status(404).json({ error: "No session found" });
+      return;
+    }
+    const existing = await db
+      .select({ code: voterCodesTable.code })
+      .from(voterCodesTable)
+      .where(eq(voterCodesTable.sessionId, session.id));
+    const used = new Set(existing.map((r) => r.code));
+    const fresh: string[] = [];
+    while (fresh.length < count) {
+      const c = makeCode();
+      if (!used.has(c)) {
+        used.add(c);
+        fresh.push(c);
+      }
+    }
+    await db
+      .insert(voterCodesTable)
+      .values(fresh.map((code) => ({ sessionId: session.id, code })))
+      .onConflictDoNothing();
+    res.status(201).json({ created: fresh.length });
+  } catch (err) {
+    req.log.error({ err }, "Failed to create codes");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/codes/unused", async (req, res) => {
+  try {
+    const session = await getCurrentSession();
+    if (!session) {
+      res.status(404).json({ error: "No session found" });
+      return;
+    }
+    await db
+      .delete(voterCodesTable)
+      .where(and(eq(voterCodesTable.sessionId, session.id), sql`${voterCodesTable.voterId} is null`));
     res.status(204).end();
   } catch (err) {
-    req.log.error({ err }, "Failed to delete costume");
+    req.log.error({ err }, "Failed to delete unused codes");
     res.status(500).json({ error: "Internal server error" });
   }
 });

@@ -23,6 +23,7 @@ export const GetActiveSessionResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "isOpen": zod.boolean(),
+  "requireCode": zod.boolean(),
   "createdAt": zod.string()
 })
 
@@ -32,7 +33,9 @@ export const GetActiveSessionResponse = zod.object({
  */
 export const RegisterVoterBody = zod.object({
   "nickname": zod.string(),
-  "sessionId": zod.number()
+  "sessionId": zod.number(),
+  "deviceId": zod.string(),
+  "code": zod.string().optional()
 })
 
 
@@ -88,14 +91,18 @@ export const GetResultsResponse = zod.object({
   "sessionId": zod.number(),
   "sessionName": zod.string(),
   "isOpen": zod.boolean(),
+  "requireCode": zod.boolean(),
   "totalVoters": zod.number(),
+  "codesTotal": zod.number(),
+  "codesUsed": zod.number(),
   "top5": zod.array(zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "imagePath": zod.string(),
   "totalVotes": zod.number(),
   "sumScores": zod.number(),
-  "percentage": zod.number(),
+  "avgScore": zod.number(),
+  "weightedScore": zod.number(),
   "rank": zod.number()
 })),
   "allCostumes": zod.array(zod.object({
@@ -104,7 +111,8 @@ export const GetResultsResponse = zod.object({
   "imagePath": zod.string(),
   "totalVotes": zod.number(),
   "sumScores": zod.number(),
-  "percentage": zod.number(),
+  "avgScore": zod.number(),
+  "weightedScore": zod.number(),
   "rank": zod.number()
 }))
 })
@@ -137,7 +145,91 @@ export const CloseSessionResponse = zod.object({
   "id": zod.number(),
   "name": zod.string(),
   "isOpen": zod.boolean(),
+  "requireCode": zod.boolean(),
   "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Reopen a closed session (closes any other open session)
+ */
+export const ReopenSessionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ReopenSessionHeader = zod.object({
+  "x-admin-token": zod.string()
+})
+
+export const ReopenSessionResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "isOpen": zod.boolean(),
+  "requireCode": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Update session settings (voter codes required or not)
+ */
+export const UpdateSessionSettingsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateSessionSettingsHeader = zod.object({
+  "x-admin-token": zod.string()
+})
+
+export const UpdateSessionSettingsBody = zod.object({
+  "requireCode": zod.boolean()
+})
+
+export const UpdateSessionSettingsResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "isOpen": zod.boolean(),
+  "requireCode": zod.boolean(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary List voter codes of the current session
+ */
+export const ListVoterCodesHeader = zod.object({
+  "x-admin-token": zod.string()
+})
+
+export const ListVoterCodesResponseItem = zod.object({
+  "code": zod.string(),
+  "used": zod.boolean(),
+  "nickname": zod.string().nullable()
+})
+export const ListVoterCodesResponse = zod.array(ListVoterCodesResponseItem)
+
+
+/**
+ * @summary Generate new single-use voter codes for the current session
+ */
+export const CreateVoterCodesHeader = zod.object({
+  "x-admin-token": zod.string()
+})
+
+export const createVoterCodesBodyCountMax = 500;
+
+
+
+export const CreateVoterCodesBody = zod.object({
+  "count": zod.number().min(1).max(createVoterCodesBodyCountMax)
+})
+
+
+/**
+ * @summary Delete voter codes not yet used
+ */
+export const DeleteUnusedVoterCodesHeader = zod.object({
+  "x-admin-token": zod.string()
 })
 
 
@@ -182,6 +274,32 @@ export const CreateCostumeHeader = zod.object({
 })
 
 export const CreateCostumeBody = zod.object({
+  "name": zod.string(),
+  "imagePath": zod.string(),
+  "displayOrder": zod.number()
+})
+
+
+/**
+ * @summary Edit a costume
+ */
+export const UpdateCostumeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateCostumeHeader = zod.object({
+  "x-admin-token": zod.string()
+})
+
+export const UpdateCostumeBody = zod.object({
+  "name": zod.string(),
+  "imagePath": zod.string(),
+  "displayOrder": zod.number()
+})
+
+export const UpdateCostumeResponse = zod.object({
+  "id": zod.number(),
+  "sessionId": zod.number(),
   "name": zod.string(),
   "imagePath": zod.string(),
   "displayOrder": zod.number()
