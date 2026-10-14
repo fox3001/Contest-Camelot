@@ -13,6 +13,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { adminRequest, clearAdminToken, getAdminToken } from "@/lib/storage";
+import { optimizedImage } from "@/lib/images";
 
 const MEDAL = ["bg-primary text-primary-foreground", "bg-zinc-300/30 text-zinc-200", "bg-amber-700/30 text-amber-400"];
 
@@ -40,7 +41,7 @@ function ImageLightbox({ src, name, onClose }: { src: string; name: string; onCl
         className="relative max-w-2xl w-full"
       >
         <img
-          src={src}
+          src={optimizedImage(src, 1400)}
           alt={name}
           className="w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl"
         />
@@ -65,7 +66,7 @@ function CostumeThumbnail({ imagePath, name, onOpen }: { imagePath?: string; nam
       className="w-10 h-10 rounded-lg overflow-hidden shrink-0 border border-border/60 hover:border-primary/60 transition focus:outline-none focus:ring-2 focus:ring-primary"
       title={`Vedi immagine: ${name}`}
     >
-      <img src={imagePath} alt={name} className="w-full h-full object-cover" />
+      <img src={optimizedImage(imagePath, 120)} alt={name} className="w-full h-full object-cover" loading="lazy" />
     </button>
   );
 }
@@ -317,6 +318,18 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+
+            {results.pendingEntries > 0 && (
+              <button
+                onClick={() => setLocation("/admin/gestione")}
+                className="w-full flex items-center justify-between bg-primary/15 border border-primary/40 rounded-xl px-4 py-3 text-sm text-foreground"
+              >
+                <span>
+                  {results.pendingEntries === 1 ? "1 iscrizione da approvare" : `${results.pendingEntries} iscrizioni da approvare`}
+                </span>
+                <span className="text-primary font-medium">Apri →</span>
+              </button>
+            )}
 
             {results.requireCode && (
               <p className="text-xs text-muted-foreground">

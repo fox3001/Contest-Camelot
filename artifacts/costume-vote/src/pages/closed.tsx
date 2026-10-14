@@ -71,6 +71,15 @@ export default function Closed() {
           </p>
         </motion.div>
 
+        {session?.entriesOpen && (
+          <button
+            onClick={() => setLocation("/iscriviti")}
+            className="mt-4 w-full border border-primary/50 text-primary rounded-xl py-3 text-sm font-medium hover:bg-primary/10 transition"
+          >
+            Iscrivi il tuo costume
+          </button>
+        )}
+
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

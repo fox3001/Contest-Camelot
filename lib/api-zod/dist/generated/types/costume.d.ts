@@ -5,11 +5,15 @@
  * Costume voting app API
  * OpenAPI spec version: 0.1.0
  */
+import type { CostumeStatus } from './costumeStatus';
 export interface Costume {
     id: number;
     sessionId: number;
     name: string;
     imagePath: string;
     displayOrder: number;
+    status: CostumeStatus;
+    /** @nullable */
+    submittedBy?: string | null;
 }
 //# sourceMappingURL=costume.d.ts.map

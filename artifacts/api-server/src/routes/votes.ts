@@ -78,7 +78,7 @@ router.post("/", async (req, res) => {
     const valid = await db
       .select({ id: costumesTable.id })
       .from(costumesTable)
-      .where(and(eq(costumesTable.sessionId, voter.sessionId), inArray(costumesTable.id, ids)));
+      .where(and(eq(costumesTable.sessionId, voter.sessionId), eq(costumesTable.status, "approved"), inArray(costumesTable.id, ids)));
     if (valid.length !== ids.length) {
       res.status(400).json({ error: "Costume not in this session" });
       return;

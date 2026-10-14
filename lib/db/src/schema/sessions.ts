@@ -8,6 +8,8 @@ export const sessionsTable = pgTable("sessions", {
   isOpen: boolean("is_open").notNull().default(true),
   // Se true, per registrarsi serve un codice votante generato dall'admin
   requireCode: boolean("require_code").notNull().default(false),
+  // Se true, i partecipanti possono iscrivere il proprio costume con una foto
+  entriesOpen: boolean("entries_open").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

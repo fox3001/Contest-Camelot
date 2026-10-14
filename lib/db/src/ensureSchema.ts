@@ -37,6 +37,12 @@ const STATEMENTS: string[] = [
    )`,
   `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS require_code boolean NOT NULL DEFAULT false`,
   `ALTER TABLE voters ADD COLUMN IF NOT EXISTS device_id text`,
+  `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS entries_open boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE costumes ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'approved'`,
+  `ALTER TABLE costumes ADD COLUMN IF NOT EXISTS device_id text`,
+  `ALTER TABLE costumes ADD COLUMN IF NOT EXISTS submitted_by text`,
+  `ALTER TABLE costumes ADD COLUMN IF NOT EXISTS image_public_id text`,
+  `ALTER TABLE costumes ADD COLUMN IF NOT EXISTS created_at timestamp NOT NULL DEFAULT now()`,
   `CREATE TABLE IF NOT EXISTS voter_codes (
      id serial PRIMARY KEY,
      session_id integer NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
@@ -53,6 +59,8 @@ const OPTIONAL_STATEMENTS: string[] = [
      ON voters (session_id, device_id) WHERE device_id IS NOT NULL`,
   `CREATE INDEX IF NOT EXISTS voters_session_nickname_idx ON voters (session_id, lower(nickname))`,
   `CREATE INDEX IF NOT EXISTS votes_costume_idx ON votes (costume_id)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS costumes_session_device_unique
+     ON costumes (session_id, device_id) WHERE device_id IS NOT NULL`,
 ];
 
 export async function ensureSchema(

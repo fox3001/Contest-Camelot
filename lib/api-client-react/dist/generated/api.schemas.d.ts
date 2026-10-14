@@ -13,17 +13,28 @@ export interface Session {
     name: string;
     isOpen: boolean;
     requireCode: boolean;
+    entriesOpen: boolean;
+    entriesAvailable: boolean;
     createdAt: string;
 }
 export interface SessionInput {
     name: string;
 }
+export type CostumeStatus = typeof CostumeStatus[keyof typeof CostumeStatus];
+export declare const CostumeStatus: {
+    readonly approved: "approved";
+    readonly pending: "pending";
+    readonly rejected: "rejected";
+};
 export interface Costume {
     id: number;
     sessionId: number;
     name: string;
     imagePath: string;
     displayOrder: number;
+    status: CostumeStatus;
+    /** @nullable */
+    submittedBy?: string | null;
 }
 export interface CostumeInput {
     name: string;
@@ -78,6 +89,8 @@ export interface ResultsSummary {
     sessionName: string;
     isOpen: boolean;
     requireCode: boolean;
+    entriesOpen: boolean;
+    pendingEntries: number;
     totalVoters: number;
     codesTotal: number;
     codesUsed: number;
@@ -85,7 +98,17 @@ export interface ResultsSummary {
     allCostumes: CostumeResult[];
 }
 export interface SessionSettingsInput {
-    requireCode: boolean;
+    requireCode?: boolean;
+    entriesOpen?: boolean;
+}
+export type CostumeStatusInputStatus = typeof CostumeStatusInputStatus[keyof typeof CostumeStatusInputStatus];
+export declare const CostumeStatusInputStatus: {
+    readonly approved: "approved";
+    readonly pending: "pending";
+    readonly rejected: "rejected";
+};
+export interface CostumeStatusInput {
+    status: CostumeStatusInputStatus;
 }
 export interface VoterCode {
     code: string;

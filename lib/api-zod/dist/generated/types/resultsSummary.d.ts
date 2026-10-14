@@ -11,6 +11,8 @@ export interface ResultsSummary {
     sessionName: string;
     isOpen: boolean;
     requireCode: boolean;
+    entriesOpen: boolean;
+    pendingEntries: number;
     totalVoters: number;
     codesTotal: number;
     codesUsed: number;

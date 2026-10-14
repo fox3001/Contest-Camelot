@@ -20,3 +20,5 @@ services:
         sync: false # la password del pannello admin
       - key: ADMIN_TOKEN
         generateValue: true # chiave casuale generata da Render
+      - key: CLOUDINARY_URL
+        sync: false # facoltativa: cloudinary://API_KEY:API_SECRET@CLOUD_NAME, attiva le iscrizioni con foto

@@ -1,5 +1,6 @@
 import { db, sessionsTable, type Session } from "@workspace/db";
 import { desc } from "drizzle-orm";
+import { cloudinaryEnabled } from "./cloudinary";
 
 /** Sessione corrente = quella aperta più recente; se nessuna è aperta, la più recente. */
 export async function getCurrentSession(): Promise<Session | undefined> {
@@ -17,6 +18,8 @@ export function serializeSession(s: Session) {
     name: s.name,
     isOpen: s.isOpen,
     requireCode: s.requireCode,
+    entriesOpen: s.entriesOpen && cloudinaryEnabled(),
+    entriesAvailable: cloudinaryEnabled(),
     createdAt: s.createdAt.toISOString(),
   };
 }
