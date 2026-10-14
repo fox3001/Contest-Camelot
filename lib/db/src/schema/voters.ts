@@ -8,6 +8,8 @@ export const votersTable = pgTable("voters", {
   sessionId: integer("session_id").notNull().references(() => sessionsTable.id, { onDelete: "cascade" }),
   nickname: text("nickname").notNull(),
   token: text("token").notNull().unique(),
+  // Identificativo casuale del dispositivo (localStorage): un votante per dispositivo per sessione
+  deviceId: text("device_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -10,9 +10,10 @@ export default function Closed() {
   useEffect(() => {
     if (session?.isOpen) setLocation("/");
   }, [session, setLocation]);
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-      <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+      <div className="absolute top-4 left-4">
         <button
           onClick={() => setLocation("/")}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition"
@@ -21,15 +22,6 @@ export default function Closed() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
           Indietro
-        </button>
-        <button
-          onClick={() => setLocation("/admin")}
-          className="flex items-center gap-1 text-xs text-muted-foreground/60 hover:text-muted-foreground transition px-2 py-1 rounded-lg"
-        >
-          <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5" stroke="currentColor" strokeWidth={1.8}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-          </svg>
-          Admin
         </button>
       </div>
       <motion.div
@@ -41,8 +33,7 @@ export default function Closed() {
         <motion.div
           animate={{ rotate: [0, -5, 5, -3, 3, 0] }}
           transition={{ duration: 2, delay: 0.8, ease: "easeInOut" }}
-          className="text-8xl mb-6"
-          style={{ fontSize: "5rem" }}
+          className="mb-6"
         >
           <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center">
             <svg viewBox="0 0 24 24" fill="none" className="w-12 h-12 text-primary" stroke="currentColor" strokeWidth={1.5}>
@@ -76,7 +67,7 @@ export default function Closed() {
           className="bg-card border border-border rounded-2xl p-6"
         >
           <p className="text-muted-foreground text-sm leading-relaxed">
-            Attendi gli annunci dell'araldo: il vincitore del concorso di costumi verra' rivelato a breve.
+            Attendi gli annunci dell'araldo: il vincitore del concorso di costumi verrà rivelato a breve.
           </p>
         </motion.div>
 

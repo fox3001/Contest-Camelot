@@ -1,7 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useListCostumes, useGetActiveSession, getGetActiveSessionQueryKey } from "@workspace/api-client-react";
+import { clearStoredVoter, getStoredVoter } from "@/lib/storage";
+
+type SaveState = "saving" | "saved" | "error";
 
 function StarRating({
   score,
@@ -35,12 +38,7 @@ function StarRating({
             fill={star <= (hovered || score) ? "currentColor" : "none"}
             stroke="currentColor"
             strokeWidth={1.5}
-            style={{
-              color:
-                star <= (hovered || score)
-                  ? "hsl(45 100% 50%)"
-                  : "hsl(270 40% 40%)",
-            }}
+            style={{ color: star <= (hovered || score) ? "hsl(45 100% 50%)" : "hsl(270 40% 40%)" }}
           >
             <path
               strokeLinecap="round"
@@ -54,61 +52,95 @@ function StarRating({
   );
 }
 
+/** Mescolamento deterministico: ogni votante vede un ordine diverso ma stabile. */
+function seededShuffle<T>(items: T[], seed: string): T[] {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const rand = () => {
+    h = (h + 0x6d2b79f5) | 0;
+    let t = Math.imul(h ^ (h >>> 15), 1 | h);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const out = items.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 export default function Vote() {
   const [, setLocation] = useLocation();
   const [votes, setVotes] = useState<Record<number, number>>({});
-  const [saving, setSaving] = useState<Record<number, boolean>>({});
-  const [saved, setSaved] = useState<Record<number, boolean>>({});
+  const [status, setStatus] = useState<Record<number, SaveState>>({});
   const [existingLoaded, setExistingLoaded] = useState(false);
+  const [query, setQuery] = useState("");
   const [lightbox, setLightbox] = useState<{ src: string; name: string } | null>(null);
 
-  const voterToken = localStorage.getItem("voterToken");
-  const storedSessionId = localStorage.getItem("sessionId");
+  const stored = getStoredVoter();
+  const voterToken = stored?.token ?? null;
   const { data: session } = useGetActiveSession({ query: { queryKey: getGetActiveSessionQueryKey(), refetchInterval: 4000 } });
   const { data: costumes, isLoading } = useListCostumes();
 
   useEffect(() => {
-    if (!voterToken) { setLocation("/"); return; }
+    if (!voterToken) setLocation("/");
   }, [voterToken, setLocation]);
 
   useEffect(() => {
     if (!session) return;
-    if (!session.isOpen) { setLocation("/closed"); return; }
-    // Token appartiene a sessione diversa: forza re-registrazione
-    if (storedSessionId && String(session.id) !== storedSessionId) {
-      localStorage.removeItem("voterToken");
-      localStorage.removeItem("voterId");
-      localStorage.removeItem("voterNickname");
-      localStorage.removeItem("sessionId");
+    if (!session.isOpen) {
+      setLocation("/closed");
+      return;
+    }
+    // Token di una sessione diversa: serve registrarsi di nuovo
+    if (stored?.sessionId && String(session.id) !== stored.sessionId) {
+      clearStoredVoter();
       setLocation("/");
     }
-  }, [session, storedSessionId, setLocation]);
+  }, [session, stored?.sessionId, setLocation]);
 
   useEffect(() => {
     if (!voterToken || existingLoaded) return;
     fetch(`/api/votes?token=${encodeURIComponent(voterToken)}`)
-      .then((r) => r.ok ? r.json() : [])
-      .then((existing: Array<{ costumeId: number; score: number }>) => {
-        if (existing.length > 0) {
-          const map: Record<number, number> = {};
-          const savedMap: Record<number, boolean> = {};
-          for (const v of existing) {
-            map[v.costumeId] = v.score;
-            savedMap[v.costumeId] = true;
-          }
-          setVotes(map);
-          setSaved(savedMap);
+      .then((r) => {
+        if (r.status === 404) {
+          clearStoredVoter();
+          setLocation("/");
+          return [];
         }
+        return r.ok ? r.json() : [];
+      })
+      .then((existing: Array<{ costumeId: number; score: number }>) => {
+        const map: Record<number, number> = {};
+        const st: Record<number, SaveState> = {};
+        for (const v of existing) {
+          map[v.costumeId] = v.score;
+          st[v.costumeId] = "saved";
+        }
+        setVotes(map);
+        setStatus(st);
         setExistingLoaded(true);
       })
       .catch(() => setExistingLoaded(true));
-  }, [voterToken, existingLoaded]);
+  }, [voterToken, existingLoaded, setLocation]);
+
+  const ordered = useMemo(
+    () => (costumes && voterToken ? seededShuffle(costumes, voterToken) : costumes ?? []),
+    [costumes, voterToken],
+  );
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? ordered.filter((c) => c.name.toLowerCase().includes(q)) : ordered;
+  }, [ordered, query]);
 
   const handleVoteChange = async (costumeId: number, score: number) => {
     if (!voterToken) return;
     setVotes((prev) => ({ ...prev, [costumeId]: score }));
-    setSaving((prev) => ({ ...prev, [costumeId]: true }));
-    setSaved((prev) => ({ ...prev, [costumeId]: false }));
+    setStatus((prev) => ({ ...prev, [costumeId]: "saving" }));
     try {
       const res = await fetch("/api/votes", {
         method: "POST",
@@ -119,17 +151,15 @@ export default function Vote() {
         setLocation("/closed");
         return;
       }
-      if (res.ok) {
-        setSaved((prev) => ({ ...prev, [costumeId]: true }));
-      }
+      setStatus((prev) => ({ ...prev, [costumeId]: res.ok ? "saved" : "error" }));
     } catch {
-      // silently ignore network errors
-    } finally {
-      setSaving((prev) => ({ ...prev, [costumeId]: false }));
+      setStatus((prev) => ({ ...prev, [costumeId]: "error" }));
     }
   };
 
-  const allVoted = costumes && costumes.length > 0 && costumes.every((c) => votes[c.id]);
+  const savedCount = Object.values(status).filter((s) => s === "saved").length;
+  const errorCount = Object.values(status).filter((s) => s === "error").length;
+  const allVoted = costumes && costumes.length > 0 && costumes.every((c) => status[c.id] === "saved");
 
   if (isLoading) {
     return (
@@ -157,114 +187,107 @@ export default function Vote() {
     );
   }
 
-  const nickname = localStorage.getItem("voterNickname") ?? "Votante";
-
   return (
     <div className="min-h-screen pb-8">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setLocation("/")}
-              className="text-muted-foreground hover:text-foreground transition"
-              aria-label="Indietro"
-            >
-              <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-              </svg>
-            </button>
-            <div>
-              <p className="text-xs text-muted-foreground">Ciao, {nickname}</p>
-              <h1 className="text-lg font-serif text-foreground leading-tight">Vota i Costumi</h1>
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setLocation("/")} className="text-muted-foreground hover:text-foreground transition" aria-label="Indietro">
+                <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+              </button>
+              <div>
+                <p className="text-xs text-muted-foreground">Ciao, {stored?.nickname || "Votante"}</p>
+                <h1 className="text-lg font-serif text-foreground leading-tight">Vota i Costumi</h1>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
             <p className="text-xs text-muted-foreground">
-              {Object.keys(votes).length}/{costumes.length} votati
+              {savedCount}/{costumes.length} votati
             </p>
-            <button
-              onClick={() => setLocation("/admin")}
-              className="flex items-center gap-1 text-xs text-muted-foreground/60 hover:text-muted-foreground transition px-2 py-1 rounded-lg"
-            >
-              <svg viewBox="0 0 24 24" fill="none" className="w-3.5 h-3.5" stroke="currentColor" strokeWidth={1.8}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-              Admin
-            </button>
           </div>
+          {costumes.length > 6 && (
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Cerca un costume per nome o numero"
+              className="mt-3 w-full bg-background border border-input rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          )}
+          {errorCount > 0 && (
+            <p className="mt-2 text-xs text-destructive">
+              {errorCount === 1 ? "1 voto non è stato salvato" : `${errorCount} voti non sono stati salvati`}: controlla la connessione e tocca di nuovo le stelle.
+            </p>
+          )}
         </div>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
-        {costumes.map((costume, index) => (
-          <motion.div
-            key={costume.id}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: index * 0.08 }}
-            className="bg-card border border-border rounded-2xl overflow-hidden shadow"
-          >
-            {costume.imagePath && (
-              <div
-                className="aspect-video bg-muted overflow-hidden cursor-zoom-in relative group"
-                onClick={() => setLightbox({ src: costume.imagePath!, name: costume.name })}
-              >
-                <img
-                  src={costume.imagePath}
-                  alt={costume.name}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).parentElement!.style.display = "none";
-                  }}
-                />
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
-                  <div className="bg-black/50 rounded-full p-2">
-                    <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-white" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
-                    </svg>
-                  </div>
+        {visible.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">Nessun costume trovato.</p>}
+
+        {visible.map((costume, index) => {
+          const st = status[costume.id];
+          return (
+            <motion.div
+              key={costume.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: Math.min(index, 4) * 0.06 }}
+              className={`bg-card border rounded-2xl overflow-hidden shadow ${st === "error" ? "border-destructive" : "border-border"}`}
+            >
+              {costume.imagePath && (
+                <div
+                  className="aspect-video bg-muted overflow-hidden cursor-zoom-in relative group"
+                  onClick={() => setLightbox({ src: costume.imagePath!, name: costume.name })}
+                >
+                  <img
+                    src={costume.imagePath}
+                    alt={costume.name}
+                    loading={index < 2 ? "eager" : "lazy"}
+                    decoding="async"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).parentElement!.style.display = "none";
+                    }}
+                  />
                 </div>
-              </div>
-            )}
+              )}
 
-            <div className="p-4">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <h2 className="text-xl font-serif text-foreground text-center">{costume.name}</h2>
-                <AnimatePresence mode="wait">
-                  {saving[costume.id] && (
-                    <motion.div
-                      key="saving"
-                      initial={{ opacity: 0, scale: 0.7 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.7 }}
-                      className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0"
-                    />
-                  )}
-                  {!saving[costume.id] && saved[costume.id] && (
-                    <motion.div
-                      key="saved"
-                      initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0 }}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-primary shrink-0" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                      </svg>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              <div className="p-4">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <h2 className="text-xl font-serif text-foreground text-center">{costume.name}</h2>
+                  <AnimatePresence mode="wait">
+                    {st === "saving" && (
+                      <motion.div
+                        key="saving"
+                        initial={{ opacity: 0, scale: 0.7 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.7 }}
+                        className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0"
+                      />
+                    )}
+                    {st === "saved" && (
+                      <motion.div key="saved" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+                        <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-primary shrink-0" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
-              <StarRating
-                score={votes[costume.id] ?? 0}
-                onChange={handleVoteChange}
-                costumeId={costume.id}
-                disabled={saving[costume.id]}
-              />
-            </div>
-          </motion.div>
-        ))}
+                <StarRating score={votes[costume.id] ?? 0} onChange={handleVoteChange} costumeId={costume.id} disabled={st === "saving"} />
+
+                {st === "error" && (
+                  <p className="mt-2 text-center text-xs text-destructive">Voto non salvato. Tocca di nuovo una stella per riprovare.</p>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
 
         <AnimatePresence>
           {allVoted && (
@@ -295,10 +318,7 @@ export default function Vote() {
             className="fixed inset-0 z-50 bg-black flex flex-col"
           >
             <div className="flex items-center gap-3 px-4 py-3 shrink-0">
-              <button
-                onClick={() => setLightbox(null)}
-                className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition"
-              >
+              <button onClick={() => setLightbox(null)} className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition">
                 <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                 </svg>

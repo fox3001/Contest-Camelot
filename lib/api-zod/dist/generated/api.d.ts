@@ -23,16 +23,19 @@ export declare const GetActiveSessionResponse: zod.ZodObject<{
     id: zod.ZodNumber;
     name: zod.ZodString;
     isOpen: zod.ZodBoolean;
+    requireCode: zod.ZodBoolean;
     createdAt: zod.ZodString;
 }, "strip", zod.ZodTypeAny, {
     id: number;
     name: string;
     isOpen: boolean;
+    requireCode: boolean;
     createdAt: string;
 }, {
     id: number;
     name: string;
     isOpen: boolean;
+    requireCode: boolean;
     createdAt: string;
 }>;
 /**
@@ -41,12 +44,18 @@ export declare const GetActiveSessionResponse: zod.ZodObject<{
 export declare const RegisterVoterBody: zod.ZodObject<{
     nickname: zod.ZodString;
     sessionId: zod.ZodNumber;
+    deviceId: zod.ZodString;
+    code: zod.ZodOptional<zod.ZodString>;
 }, "strip", zod.ZodTypeAny, {
     nickname: string;
     sessionId: number;
+    deviceId: string;
+    code?: string | undefined;
 }, {
     nickname: string;
     sessionId: number;
+    deviceId: string;
+    code?: string | undefined;
 }>;
 /**
  * @summary List all costumes for the active session
@@ -149,14 +158,18 @@ export declare const GetResultsResponse: zod.ZodObject<{
     sessionId: zod.ZodNumber;
     sessionName: zod.ZodString;
     isOpen: zod.ZodBoolean;
+    requireCode: zod.ZodBoolean;
     totalVoters: zod.ZodNumber;
+    codesTotal: zod.ZodNumber;
+    codesUsed: zod.ZodNumber;
     top5: zod.ZodArray<zod.ZodObject<{
         id: zod.ZodNumber;
         name: zod.ZodString;
         imagePath: zod.ZodString;
         totalVotes: zod.ZodNumber;
         sumScores: zod.ZodNumber;
-        percentage: zod.ZodNumber;
+        avgScore: zod.ZodNumber;
+        weightedScore: zod.ZodNumber;
         rank: zod.ZodNumber;
     }, "strip", zod.ZodTypeAny, {
         id: number;
@@ -164,7 +177,8 @@ export declare const GetResultsResponse: zod.ZodObject<{
         imagePath: string;
         totalVotes: number;
         sumScores: number;
-        percentage: number;
+        avgScore: number;
+        weightedScore: number;
         rank: number;
     }, {
         id: number;
@@ -172,7 +186,8 @@ export declare const GetResultsResponse: zod.ZodObject<{
         imagePath: string;
         totalVotes: number;
         sumScores: number;
-        percentage: number;
+        avgScore: number;
+        weightedScore: number;
         rank: number;
     }>, "many">;
     allCostumes: zod.ZodArray<zod.ZodObject<{
@@ -181,7 +196,8 @@ export declare const GetResultsResponse: zod.ZodObject<{
         imagePath: zod.ZodString;
         totalVotes: zod.ZodNumber;
         sumScores: zod.ZodNumber;
-        percentage: zod.ZodNumber;
+        avgScore: zod.ZodNumber;
+        weightedScore: zod.ZodNumber;
         rank: zod.ZodNumber;
     }, "strip", zod.ZodTypeAny, {
         id: number;
@@ -189,7 +205,8 @@ export declare const GetResultsResponse: zod.ZodObject<{
         imagePath: string;
         totalVotes: number;
         sumScores: number;
-        percentage: number;
+        avgScore: number;
+        weightedScore: number;
         rank: number;
     }, {
         id: number;
@@ -197,21 +214,26 @@ export declare const GetResultsResponse: zod.ZodObject<{
         imagePath: string;
         totalVotes: number;
         sumScores: number;
-        percentage: number;
+        avgScore: number;
+        weightedScore: number;
         rank: number;
     }>, "many">;
 }, "strip", zod.ZodTypeAny, {
     isOpen: boolean;
+    requireCode: boolean;
     sessionId: number;
     sessionName: string;
     totalVoters: number;
+    codesTotal: number;
+    codesUsed: number;
     top5: {
         id: number;
         name: string;
         imagePath: string;
         totalVotes: number;
         sumScores: number;
-        percentage: number;
+        avgScore: number;
+        weightedScore: number;
         rank: number;
     }[];
     allCostumes: {
@@ -220,21 +242,26 @@ export declare const GetResultsResponse: zod.ZodObject<{
         imagePath: string;
         totalVotes: number;
         sumScores: number;
-        percentage: number;
+        avgScore: number;
+        weightedScore: number;
         rank: number;
     }[];
 }, {
     isOpen: boolean;
+    requireCode: boolean;
     sessionId: number;
     sessionName: string;
     totalVoters: number;
+    codesTotal: number;
+    codesUsed: number;
     top5: {
         id: number;
         name: string;
         imagePath: string;
         totalVotes: number;
         sumScores: number;
-        percentage: number;
+        avgScore: number;
+        weightedScore: number;
         rank: number;
     }[];
     allCostumes: {
@@ -243,7 +270,8 @@ export declare const GetResultsResponse: zod.ZodObject<{
         imagePath: string;
         totalVotes: number;
         sumScores: number;
-        percentage: number;
+        avgScore: number;
+        weightedScore: number;
         rank: number;
     }[];
 }>;
@@ -285,17 +313,163 @@ export declare const CloseSessionResponse: zod.ZodObject<{
     id: zod.ZodNumber;
     name: zod.ZodString;
     isOpen: zod.ZodBoolean;
+    requireCode: zod.ZodBoolean;
     createdAt: zod.ZodString;
 }, "strip", zod.ZodTypeAny, {
     id: number;
     name: string;
     isOpen: boolean;
+    requireCode: boolean;
     createdAt: string;
 }, {
     id: number;
     name: string;
     isOpen: boolean;
+    requireCode: boolean;
     createdAt: string;
+}>;
+/**
+ * @summary Reopen a closed session (closes any other open session)
+ */
+export declare const ReopenSessionParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const ReopenSessionHeader: zod.ZodObject<{
+    "x-admin-token": zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    "x-admin-token": string;
+}, {
+    "x-admin-token": string;
+}>;
+export declare const ReopenSessionResponse: zod.ZodObject<{
+    id: zod.ZodNumber;
+    name: zod.ZodString;
+    isOpen: zod.ZodBoolean;
+    requireCode: zod.ZodBoolean;
+    createdAt: zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+    name: string;
+    isOpen: boolean;
+    requireCode: boolean;
+    createdAt: string;
+}, {
+    id: number;
+    name: string;
+    isOpen: boolean;
+    requireCode: boolean;
+    createdAt: string;
+}>;
+/**
+ * @summary Update session settings (voter codes required or not)
+ */
+export declare const UpdateSessionSettingsParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const UpdateSessionSettingsHeader: zod.ZodObject<{
+    "x-admin-token": zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    "x-admin-token": string;
+}, {
+    "x-admin-token": string;
+}>;
+export declare const UpdateSessionSettingsBody: zod.ZodObject<{
+    requireCode: zod.ZodBoolean;
+}, "strip", zod.ZodTypeAny, {
+    requireCode: boolean;
+}, {
+    requireCode: boolean;
+}>;
+export declare const UpdateSessionSettingsResponse: zod.ZodObject<{
+    id: zod.ZodNumber;
+    name: zod.ZodString;
+    isOpen: zod.ZodBoolean;
+    requireCode: zod.ZodBoolean;
+    createdAt: zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+    name: string;
+    isOpen: boolean;
+    requireCode: boolean;
+    createdAt: string;
+}, {
+    id: number;
+    name: string;
+    isOpen: boolean;
+    requireCode: boolean;
+    createdAt: string;
+}>;
+/**
+ * @summary List voter codes of the current session
+ */
+export declare const ListVoterCodesHeader: zod.ZodObject<{
+    "x-admin-token": zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    "x-admin-token": string;
+}, {
+    "x-admin-token": string;
+}>;
+export declare const ListVoterCodesResponseItem: zod.ZodObject<{
+    code: zod.ZodString;
+    used: zod.ZodBoolean;
+    nickname: zod.ZodNullable<zod.ZodString>;
+}, "strip", zod.ZodTypeAny, {
+    code: string;
+    nickname: string | null;
+    used: boolean;
+}, {
+    code: string;
+    nickname: string | null;
+    used: boolean;
+}>;
+export declare const ListVoterCodesResponse: zod.ZodArray<zod.ZodObject<{
+    code: zod.ZodString;
+    used: zod.ZodBoolean;
+    nickname: zod.ZodNullable<zod.ZodString>;
+}, "strip", zod.ZodTypeAny, {
+    code: string;
+    nickname: string | null;
+    used: boolean;
+}, {
+    code: string;
+    nickname: string | null;
+    used: boolean;
+}>, "many">;
+/**
+ * @summary Generate new single-use voter codes for the current session
+ */
+export declare const CreateVoterCodesHeader: zod.ZodObject<{
+    "x-admin-token": zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    "x-admin-token": string;
+}, {
+    "x-admin-token": string;
+}>;
+export declare const createVoterCodesBodyCountMax = 500;
+export declare const CreateVoterCodesBody: zod.ZodObject<{
+    count: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    count: number;
+}, {
+    count: number;
+}>;
+/**
+ * @summary Delete voter codes not yet used
+ */
+export declare const DeleteUnusedVoterCodesHeader: zod.ZodObject<{
+    "x-admin-token": zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    "x-admin-token": string;
+}, {
+    "x-admin-token": string;
 }>;
 /**
  * @summary Delete all votes and voters for the current session
@@ -385,6 +559,55 @@ export declare const CreateCostumeBody: zod.ZodObject<{
     displayOrder: number;
 }, {
     name: string;
+    imagePath: string;
+    displayOrder: number;
+}>;
+/**
+ * @summary Edit a costume
+ */
+export declare const UpdateCostumeParams: zod.ZodObject<{
+    id: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+}, {
+    id: number;
+}>;
+export declare const UpdateCostumeHeader: zod.ZodObject<{
+    "x-admin-token": zod.ZodString;
+}, "strip", zod.ZodTypeAny, {
+    "x-admin-token": string;
+}, {
+    "x-admin-token": string;
+}>;
+export declare const UpdateCostumeBody: zod.ZodObject<{
+    name: zod.ZodString;
+    imagePath: zod.ZodString;
+    displayOrder: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    name: string;
+    imagePath: string;
+    displayOrder: number;
+}, {
+    name: string;
+    imagePath: string;
+    displayOrder: number;
+}>;
+export declare const UpdateCostumeResponse: zod.ZodObject<{
+    id: zod.ZodNumber;
+    sessionId: zod.ZodNumber;
+    name: zod.ZodString;
+    imagePath: zod.ZodString;
+    displayOrder: zod.ZodNumber;
+}, "strip", zod.ZodTypeAny, {
+    id: number;
+    name: string;
+    sessionId: number;
+    imagePath: string;
+    displayOrder: number;
+}, {
+    id: number;
+    name: string;
+    sessionId: number;
     imagePath: string;
     displayOrder: number;
 }>;

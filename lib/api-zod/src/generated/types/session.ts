@@ -10,5 +10,6 @@ export interface Session {
   id: number;
   name: string;
   isOpen: boolean;
+  requireCode: boolean;
   createdAt: string;
 }

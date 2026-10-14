@@ -11,7 +11,8 @@ export interface CostumeResult {
     imagePath: string;
     totalVotes: number;
     sumScores: number;
-    percentage: number;
+    avgScore: number;
+    weightedScore: number;
     rank: number;
 }
 //# sourceMappingURL=costumeResult.d.ts.map

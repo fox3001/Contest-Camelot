@@ -12,6 +12,7 @@ export interface Session {
     id: number;
     name: string;
     isOpen: boolean;
+    requireCode: boolean;
     createdAt: string;
 }
 export interface SessionInput {
@@ -32,6 +33,8 @@ export interface CostumeInput {
 export interface VoterInput {
     nickname: string;
     sessionId: number;
+    deviceId: string;
+    code?: string;
 }
 export interface VoterRegistration {
     id: number;
@@ -66,15 +69,38 @@ export interface CostumeResult {
     imagePath: string;
     totalVotes: number;
     sumScores: number;
-    percentage: number;
+    avgScore: number;
+    weightedScore: number;
     rank: number;
 }
 export interface ResultsSummary {
     sessionId: number;
     sessionName: string;
     isOpen: boolean;
+    requireCode: boolean;
     totalVoters: number;
+    codesTotal: number;
+    codesUsed: number;
     top5: CostumeResult[];
     allCostumes: CostumeResult[];
+}
+export interface SessionSettingsInput {
+    requireCode: boolean;
+}
+export interface VoterCode {
+    code: string;
+    used: boolean;
+    /** @nullable */
+    nickname: string | null;
+}
+export interface VoterCodesInput {
+    /**
+       * @minimum 1
+       * @maximum 500
+       */
+    count: number;
+}
+export interface VoterCodesCreated {
+    created: number;
 }
 //# sourceMappingURL=api.schemas.d.ts.map

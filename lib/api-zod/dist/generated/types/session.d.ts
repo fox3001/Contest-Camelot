@@ -9,6 +9,7 @@ export interface Session {
     id: number;
     name: string;
     isOpen: boolean;
+    requireCode: boolean;
     createdAt: string;
 }
 //# sourceMappingURL=session.d.ts.map
