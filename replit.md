@@ -40,10 +40,12 @@ App di votazione per concorso costumi: i partecipanti entrano via QR code, scelg
 - Ordine dei costumi mescolato per ogni votante (stabile per lo stesso votante)
 - Una sola sessione aperta alla volta; nuova sessione chiude la precedente ma NON cancella nulla; una sessione chiusa si può riaprire
 - Nessun reset pubblico: la rotta `/api/reset` è stata rimossa
+- Iscrizioni con foto: il partecipante carica la foto dal telefono (compressa nel browser) direttamente su Cloudinary con upload firmato dal server (`/api/entries/sign`); il costume entra con stato `pending` e va in gara solo quando l'admin lo approva. Un'iscrizione per dispositivo per sessione. Configurazione: `CLOUDINARY_URL`
 
 ## Product
 
 - **Votanti**: nickname (+ codice se richiesto) → vota 1-5 ogni costume, con ricerca → grazie. Se votazioni chiuse → schermata "attendi l'araldo"
+- **Partecipanti in costume**: "Iscriviti al contest" → foto + nome → in attesa → approvato/rifiutato (possono ricaricare finché non è approvato)
 - **Admin**: login con password → dashboard live (top 5, media, n.voti, punteggio) → chiudi/riapri votazioni → gestisci costumi (aggiungi, modifica, elimina con conferma) e codici votante (genera, stampa, CSV)
 
 ## User preferences

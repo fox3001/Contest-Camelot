@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useListCostumes, useGetActiveSession, getGetActiveSessionQueryKey } from "@workspace/api-client-react";
 import { clearStoredVoter, getStoredVoter } from "@/lib/storage";
+import { optimizedImage } from "@/lib/images";
 
 type SaveState = "saving" | "saved" | "error";
 
@@ -241,10 +242,10 @@ export default function Vote() {
               {costume.imagePath && (
                 <div
                   className="aspect-video bg-muted overflow-hidden cursor-zoom-in relative group"
-                  onClick={() => setLightbox({ src: costume.imagePath!, name: costume.name })}
+                  onClick={() => setLightbox({ src: optimizedImage(costume.imagePath, 1400), name: costume.name })}
                 >
                   <img
-                    src={costume.imagePath}
+                    src={optimizedImage(costume.imagePath, 800)}
                     alt={costume.name}
                     loading={index < 2 ? "eager" : "lazy"}
                     decoding="async"

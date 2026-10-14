@@ -7,5 +7,6 @@
  */
 
 export interface SessionSettingsInput {
-  requireCode: boolean;
+  requireCode?: boolean;
+  entriesOpen?: boolean;
 }

@@ -5,6 +5,7 @@
  * Costume voting app API
  * OpenAPI spec version: 0.1.0
  */
+import type { CostumeStatus } from './costumeStatus';
 
 export interface Costume {
   id: number;
@@ -12,4 +13,7 @@ export interface Costume {
   name: string;
   imagePath: string;
   displayOrder: number;
+  status: CostumeStatus;
+  /** @nullable */
+  submittedBy?: string | null;
 }

@@ -1,5 +1,5 @@
 import type { QueryKey, UseMutationOptions, UseMutationResult, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
-import type { AdminLoginInput, AdminToken, Costume, CostumeInput, HealthStatus, ResultsSummary, Session, SessionInput, SessionSettingsInput, VoteResult, VoteSubmission, VoterCode, VoterCodesCreated, VoterCodesInput, VoterInput, VoterRegistration } from './api.schemas';
+import type { AdminLoginInput, AdminToken, Costume, CostumeInput, CostumeStatusInput, HealthStatus, ResultsSummary, Session, SessionInput, SessionSettingsInput, VoteResult, VoteSubmission, VoterCode, VoterCodesCreated, VoterCodesInput, VoterInput, VoterRegistration } from './api.schemas';
 import { customFetch } from '../custom-fetch';
 import type { ErrorType, BodyType } from '../custom-fetch';
 type AwaitedInput<T> = PromiseLike<T> | T;
@@ -441,6 +441,37 @@ export declare const useCreateCostume: <TError = ErrorType<unknown>, TContext = 
     request?: SecondParameter<typeof customFetch>;
 }) => UseMutationResult<Awaited<ReturnType<typeof createCostume>>, TError, {
     data: BodyType<CostumeInput>;
+}, TContext>;
+export declare const getSetCostumeStatusUrl: (id: number) => string;
+/**
+ * @summary Approve or reject a costume entry
+ */
+export declare const setCostumeStatus: (id: number, costumeStatusInput: CostumeStatusInput, options?: RequestInit) => Promise<Costume>;
+export declare const getSetCostumeStatusMutationOptions: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof setCostumeStatus>>, TError, {
+        id: number;
+        data: BodyType<CostumeStatusInput>;
+    }, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationOptions<Awaited<ReturnType<typeof setCostumeStatus>>, TError, {
+    id: number;
+    data: BodyType<CostumeStatusInput>;
+}, TContext>;
+export type SetCostumeStatusMutationResult = NonNullable<Awaited<ReturnType<typeof setCostumeStatus>>>;
+export type SetCostumeStatusMutationBody = BodyType<CostumeStatusInput>;
+export type SetCostumeStatusMutationError = ErrorType<unknown>;
+/**
+* @summary Approve or reject a costume entry
+*/
+export declare const useSetCostumeStatus: <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<Awaited<ReturnType<typeof setCostumeStatus>>, TError, {
+        id: number;
+        data: BodyType<CostumeStatusInput>;
+    }, TContext>;
+    request?: SecondParameter<typeof customFetch>;
+}) => UseMutationResult<Awaited<ReturnType<typeof setCostumeStatus>>, TError, {
+    id: number;
+    data: BodyType<CostumeStatusInput>;
 }, TContext>;
 export declare const getUpdateCostumeUrl: (id: number) => string;
 /**

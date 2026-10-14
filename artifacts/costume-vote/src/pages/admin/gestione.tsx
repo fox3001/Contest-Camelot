@@ -9,14 +9,17 @@ import {
   getListVoterCodesQueryKey,
   getGetResultsQueryKey,
   getGetActiveSessionQueryKey,
+  useGetActiveSession,
   createCostume,
   updateCostume,
   deleteCostume,
   createVoterCodes,
   deleteUnusedVoterCodes,
   updateSessionSettings,
+  setCostumeStatus,
   type Costume,
 } from "@workspace/api-client-react";
+import { optimizedImage } from "@/lib/images";
 import { useQueryClient } from "@tanstack/react-query";
 import { adminRequest, clearAdminToken, getAdminToken } from "@/lib/storage";
 
@@ -221,6 +224,117 @@ function VoterCodesPanel() {
   );
 }
 
+function EntriesPanel({ costumes, onChanged }: { costumes: Costume[] | undefined; onChanged: () => void }) {
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState<number | "toggle" | null>(null);
+  const [error, setError] = useState("");
+  const [zoom, setZoom] = useState<Costume | null>(null);
+
+  const { data: results } = useGetResults({
+    query: { queryKey: getGetResultsQueryKey(), retry: false },
+    request: adminRequest(),
+  });
+  const { data: session } = useGetActiveSession({ query: { queryKey: getGetActiveSessionQueryKey(), retry: false } });
+
+  if (!results) return null;
+  const pending = (costumes ?? []).filter((c) => c.status === "pending");
+  const available = session?.entriesAvailable ?? false;
+
+  const act = async (key: number | "toggle", fn: () => Promise<unknown>) => {
+    setBusy(key);
+    setError("");
+    try {
+      await fn();
+      onChanged();
+      queryClient.invalidateQueries({ queryKey: getGetResultsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetActiveSessionQueryKey() });
+    } catch {
+      setError("Operazione non riuscita, riprova.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-medium text-foreground">Iscrizioni dei partecipanti</h2>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+            {available
+              ? "Con le iscrizioni aperte, chi è in costume carica la propria foto dal telefono. Entra in gara solo dopo la tua approvazione."
+              : "Per attivarle serve la variabile CLOUDINARY_URL sul server (Render → Environment)."}
+          </p>
+        </div>
+        <button
+          role="switch"
+          aria-checked={results.entriesOpen}
+          aria-label="Iscrizioni aperte"
+          disabled={!available || busy === "toggle"}
+          onClick={() => act("toggle", () => updateSessionSettings(results.sessionId, { entriesOpen: !results.entriesOpen }, adminRequest()))}
+          className={`relative shrink-0 w-12 h-7 rounded-full transition ${results.entriesOpen && available ? "bg-primary" : "bg-muted"} disabled:opacity-50`}
+        >
+          <span className={`absolute top-1 w-5 h-5 rounded-full bg-background transition-all ${results.entriesOpen && available ? "left-6" : "left-1"}`} />
+        </button>
+      </div>
+
+      {pending.length === 0 ? (
+        <p className="text-xs text-muted-foreground">Nessuna iscrizione da approvare.</p>
+      ) : (
+        <div>
+          <p className="text-xs font-medium text-primary uppercase tracking-widest mb-2">Da approvare ({pending.length})</p>
+          <div className="space-y-2">
+            {pending.map((c) => (
+              <div key={c.id} className="flex items-center gap-3 bg-background/60 border border-border rounded-xl p-3">
+                <button onClick={() => setZoom(c)} className="w-16 h-20 rounded-lg overflow-hidden shrink-0 bg-muted" aria-label={`Ingrandisci ${c.name}`}>
+                  <img src={optimizedImage(c.imagePath, 200)} alt={c.name} className="w-full h-full object-cover" loading="lazy" />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground truncate">{c.name}</p>
+                  {c.submittedBy && <p className="text-xs text-muted-foreground truncate">da {c.submittedBy}</p>}
+                </div>
+                <div className="flex flex-col gap-1.5 shrink-0">
+                  <button
+                    disabled={busy === c.id}
+                    onClick={() => act(c.id, () => setCostumeStatus(c.id, { status: "approved" }, adminRequest()))}
+                    className="bg-primary text-primary-foreground text-xs font-semibold rounded-lg px-3 py-2 disabled:opacity-50"
+                  >
+                    Approva
+                  </button>
+                  <button
+                    disabled={busy === c.id}
+                    onClick={() => act(c.id, () => setCostumeStatus(c.id, { status: "rejected" }, adminRequest()))}
+                    className="bg-muted text-foreground text-xs rounded-lg px-3 py-2 disabled:opacity-50"
+                  >
+                    Rifiuta
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <AnimatePresence>
+        {zoom && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4"
+            onClick={() => setZoom(null)}
+          >
+            <img src={optimizedImage(zoom.imagePath, 1400)} alt={zoom.name} className="max-w-full max-h-[80vh] object-contain rounded-xl" />
+            <p className="text-white/80 text-sm mt-3">{zoom.name}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function AdminGestione() {
   const [, setLocation] = useLocation();
   const token = getAdminToken();
@@ -238,7 +352,7 @@ export default function AdminGestione() {
   }, [token, setLocation]);
 
   const { data: costumes, isLoading, error } = useListAdminCostumes({
-    query: { queryKey: getListAdminCostumesQueryKey(), enabled: !!token, retry: false },
+    query: { queryKey: getListAdminCostumesQueryKey(), enabled: !!token, retry: false, refetchInterval: 10000 },
     request: adminRequest(),
   });
 
@@ -249,6 +363,9 @@ export default function AdminGestione() {
       setLocation("/admin");
     }
   }, [status, setLocation]);
+
+  const inGara = (costumes ?? []).filter((c) => c.status === "approved");
+  const rejected = (costumes ?? []).filter((c) => c.status === "rejected");
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: getListAdminCostumesQueryKey() });
@@ -377,11 +494,13 @@ export default function AdminGestione() {
           </div>
         </form>
 
+        <EntriesPanel costumes={costumes} onChanged={refresh} />
+
         <VoterCodesPanel />
 
         <div>
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">
-            Costumi in gara {costumes ? `(${costumes.length}/${MAX_COSTUMES})` : ""}
+            Costumi in gara {costumes ? `(${inGara.length}/${MAX_COSTUMES})` : ""}
           </h2>
 
           {isLoading && (
@@ -394,19 +513,19 @@ export default function AdminGestione() {
             </div>
           )}
 
-          {costumes && costumes.length === 0 && (
+          {costumes && inGara.length === 0 && (
             <div className="text-center py-8 text-muted-foreground text-sm">Nessun costume ancora. Aggiungine uno sopra.</div>
           )}
 
           <div className="space-y-2">
-            {costumes?.map((costume) => (
+            {[...inGara, ...rejected].map((costume) => (
               <div
                 key={costume.id}
                 className={`bg-card border rounded-xl p-4 flex items-center gap-3 ${editingId === costume.id ? "border-primary" : "border-border"}`}
               >
                 <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-muted">
                   <img
-                    src={costume.imagePath}
+                    src={optimizedImage(costume.imagePath, 120)}
                     alt={costume.name}
                     loading="lazy"
                     className="w-full h-full object-cover"
@@ -417,7 +536,14 @@ export default function AdminGestione() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-foreground truncate">{costume.name}</p>
-                  <p className="text-xs text-muted-foreground">Ordine: {costume.displayOrder}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {costume.status === "rejected" ? (
+                      <span className="text-destructive">Rifiutato</span>
+                    ) : (
+                      <>Ordine: {costume.displayOrder}</>
+                    )}
+                    {costume.submittedBy ? ` · da ${costume.submittedBy}` : ""}
+                  </p>
                 </div>
                 <button onClick={() => startEdit(costume)} className="text-muted-foreground hover:text-foreground transition p-1" aria-label={`Modifica ${costume.name}`}>
                   <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={1.5}>

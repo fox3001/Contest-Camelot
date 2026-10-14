@@ -20,6 +20,7 @@ import {
 } from "../lib/adminAuth";
 import { getCurrentSession, serializeSession } from "../lib/sessions";
 import { rankCostumes } from "../lib/ranking";
+import { destroyImage } from "../lib/cloudinary";
 
 const router = Router();
 
@@ -89,8 +90,13 @@ router.get("/results", async (req, res) => {
       })
       .from(costumesTable)
       .leftJoin(votesTable, eq(votesTable.costumeId, costumesTable.id))
-      .where(eq(costumesTable.sessionId, session.id))
+      .where(and(eq(costumesTable.sessionId, session.id), eq(costumesTable.status, "approved")))
       .groupBy(costumesTable.id, costumesTable.name, costumesTable.imagePath);
+
+    const [{ count: pendingEntries }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(costumesTable)
+      .where(and(eq(costumesTable.sessionId, session.id), eq(costumesTable.status, "pending")));
 
     const allCostumes = rankCostumes(stats);
 
@@ -99,6 +105,8 @@ router.get("/results", async (req, res) => {
       sessionName: session.name,
       isOpen: session.isOpen,
       requireCode: session.requireCode,
+      entriesOpen: session.entriesOpen,
+      pendingEntries,
       totalVoters,
       codesTotal: codes?.total ?? 0,
       codesUsed: codes?.used ?? 0,
@@ -176,16 +184,15 @@ router.put("/sessions/:id/reopen", async (req, res) => {
 router.put("/sessions/:id/settings", async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { requireCode } = (req.body ?? {}) as { requireCode?: unknown };
-    if (typeof requireCode !== "boolean") {
-      res.status(400).json({ error: "requireCode must be boolean" });
+    const { requireCode, entriesOpen } = (req.body ?? {}) as { requireCode?: unknown; entriesOpen?: unknown };
+    const patch: { requireCode?: boolean; entriesOpen?: boolean } = {};
+    if (typeof requireCode === "boolean") patch.requireCode = requireCode;
+    if (typeof entriesOpen === "boolean") patch.entriesOpen = entriesOpen;
+    if (Object.keys(patch).length === 0) {
+      res.status(400).json({ error: "requireCode or entriesOpen must be boolean" });
       return;
     }
-    const [session] = await db
-      .update(sessionsTable)
-      .set({ requireCode })
-      .where(eq(sessionsTable.id, id))
-      .returning();
+    const [session] = await db.update(sessionsTable).set(patch).where(eq(sessionsTable.id, id)).returning();
     if (!session) {
       res.status(404).json({ error: "Session not found" });
       return;
@@ -213,7 +220,7 @@ router.get("/costumes", async (req, res) => {
       .from(costumesTable)
       .where(eq(costumesTable.sessionId, session.id))
       .orderBy(asc(costumesTable.displayOrder), asc(costumesTable.id));
-    res.json(costumes);
+    res.json(costumes.map(({ deviceId, ...c }) => c));
   } catch (err) {
     req.log.error({ err }, "Failed to list costumes (admin)");
     res.status(500).json({ error: "Internal server error" });
@@ -282,10 +289,32 @@ router.put("/costumes/:id", async (req, res) => {
   }
 });
 
+router.put("/costumes/:id/status", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { status } = (req.body ?? {}) as { status?: unknown };
+    if (status !== "approved" && status !== "rejected" && status !== "pending") {
+      res.status(400).json({ error: "status must be approved, rejected or pending" });
+      return;
+    }
+    const [costume] = await db.update(costumesTable).set({ status }).where(eq(costumesTable.id, id)).returning();
+    if (!costume) {
+      res.status(404).json({ error: "Costume not found" });
+      return;
+    }
+    const { deviceId, ...rest } = costume;
+    res.json(rest);
+  } catch (err) {
+    req.log.error({ err }, "Failed to update costume status");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.delete("/costumes/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
-    await db.delete(costumesTable).where(eq(costumesTable.id, id));
+    const [deleted] = await db.delete(costumesTable).where(eq(costumesTable.id, id)).returning();
+    if (deleted) await destroyImage(deleted.imagePublicId);
     res.status(204).end();
   } catch (err) {
     req.log.error({ err }, "Failed to delete costume");

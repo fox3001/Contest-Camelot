@@ -24,6 +24,8 @@ export const GetActiveSessionResponse = zod.object({
   "name": zod.string(),
   "isOpen": zod.boolean(),
   "requireCode": zod.boolean(),
+  "entriesOpen": zod.boolean(),
+  "entriesAvailable": zod.boolean(),
   "createdAt": zod.string()
 })
 
@@ -47,7 +49,9 @@ export const ListCostumesResponseItem = zod.object({
   "sessionId": zod.number(),
   "name": zod.string(),
   "imagePath": zod.string(),
-  "displayOrder": zod.number()
+  "displayOrder": zod.number(),
+  "status": zod.enum(['approved', 'pending', 'rejected']),
+  "submittedBy": zod.string().nullish()
 })
 export const ListCostumesResponse = zod.array(ListCostumesResponseItem)
 
@@ -92,6 +96,8 @@ export const GetResultsResponse = zod.object({
   "sessionName": zod.string(),
   "isOpen": zod.boolean(),
   "requireCode": zod.boolean(),
+  "entriesOpen": zod.boolean(),
+  "pendingEntries": zod.number(),
   "totalVoters": zod.number(),
   "codesTotal": zod.number(),
   "codesUsed": zod.number(),
@@ -146,6 +152,8 @@ export const CloseSessionResponse = zod.object({
   "name": zod.string(),
   "isOpen": zod.boolean(),
   "requireCode": zod.boolean(),
+  "entriesOpen": zod.boolean(),
+  "entriesAvailable": zod.boolean(),
   "createdAt": zod.string()
 })
 
@@ -166,6 +174,8 @@ export const ReopenSessionResponse = zod.object({
   "name": zod.string(),
   "isOpen": zod.boolean(),
   "requireCode": zod.boolean(),
+  "entriesOpen": zod.boolean(),
+  "entriesAvailable": zod.boolean(),
   "createdAt": zod.string()
 })
 
@@ -182,7 +192,8 @@ export const UpdateSessionSettingsHeader = zod.object({
 })
 
 export const UpdateSessionSettingsBody = zod.object({
-  "requireCode": zod.boolean()
+  "requireCode": zod.boolean().optional(),
+  "entriesOpen": zod.boolean().optional()
 })
 
 export const UpdateSessionSettingsResponse = zod.object({
@@ -190,6 +201,8 @@ export const UpdateSessionSettingsResponse = zod.object({
   "name": zod.string(),
   "isOpen": zod.boolean(),
   "requireCode": zod.boolean(),
+  "entriesOpen": zod.boolean(),
+  "entriesAvailable": zod.boolean(),
   "createdAt": zod.string()
 })
 
@@ -261,7 +274,9 @@ export const ListAdminCostumesResponseItem = zod.object({
   "sessionId": zod.number(),
   "name": zod.string(),
   "imagePath": zod.string(),
-  "displayOrder": zod.number()
+  "displayOrder": zod.number(),
+  "status": zod.enum(['approved', 'pending', 'rejected']),
+  "submittedBy": zod.string().nullish()
 })
 export const ListAdminCostumesResponse = zod.array(ListAdminCostumesResponseItem)
 
@@ -277,6 +292,32 @@ export const CreateCostumeBody = zod.object({
   "name": zod.string(),
   "imagePath": zod.string(),
   "displayOrder": zod.number()
+})
+
+
+/**
+ * @summary Approve or reject a costume entry
+ */
+export const SetCostumeStatusParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SetCostumeStatusHeader = zod.object({
+  "x-admin-token": zod.string()
+})
+
+export const SetCostumeStatusBody = zod.object({
+  "status": zod.enum(['approved', 'pending', 'rejected'])
+})
+
+export const SetCostumeStatusResponse = zod.object({
+  "id": zod.number(),
+  "sessionId": zod.number(),
+  "name": zod.string(),
+  "imagePath": zod.string(),
+  "displayOrder": zod.number(),
+  "status": zod.enum(['approved', 'pending', 'rejected']),
+  "submittedBy": zod.string().nullish()
 })
 
 
@@ -302,7 +343,9 @@ export const UpdateCostumeResponse = zod.object({
   "sessionId": zod.number(),
   "name": zod.string(),
   "imagePath": zod.string(),
-  "displayOrder": zod.number()
+  "displayOrder": zod.number(),
+  "status": zod.enum(['approved', 'pending', 'rejected']),
+  "submittedBy": zod.string().nullish()
 })
 
 

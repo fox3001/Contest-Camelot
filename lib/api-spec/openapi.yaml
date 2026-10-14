@@ -387,6 +387,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/Costume"
 
+  /admin/costumes/{id}/status:
+    put:
+      operationId: setCostumeStatus
+      tags: [admin]
+      summary: Approve or reject a costume entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: x-admin-token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CostumeStatusInput"
+      responses:
+        "200":
+          description: Costume updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Costume"
+
   /admin/costumes/{id}:
     put:
       operationId: updateCostume
@@ -446,7 +476,7 @@ components:
 
     Session:
       type: object
-      required: [id, name, isOpen, requireCode, createdAt]
+      required: [id, name, isOpen, requireCode, entriesOpen, entriesAvailable, createdAt]
       properties:
         id:
           type: integer
@@ -455,6 +485,10 @@ components:
         isOpen:
           type: boolean
         requireCode:
+          type: boolean
+        entriesOpen:
+          type: boolean
+        entriesAvailable:
           type: boolean
         createdAt:
           type: string
@@ -468,7 +502,7 @@ components:
 
     Costume:
       type: object
-      required: [id, sessionId, name, imagePath, displayOrder]
+      required: [id, sessionId, name, imagePath, displayOrder, status]
       properties:
         id:
           type: integer
@@ -480,6 +514,11 @@ components:
           type: string
         displayOrder:
           type: integer
+        status:
+          type: string
+          enum: [approved, pending, rejected]
+        submittedBy:
+          type: [string, "null"]
 
     CostumeInput:
       type: object
@@ -584,7 +623,7 @@ components:
 
     ResultsSummary:
       type: object
-      required: [sessionId, sessionName, isOpen, requireCode, totalVoters, codesTotal, codesUsed, top5, allCostumes]
+      required: [sessionId, sessionName, isOpen, requireCode, entriesOpen, pendingEntries, totalVoters, codesTotal, codesUsed, top5, allCostumes]
       properties:
         sessionId:
           type: integer
@@ -594,6 +633,10 @@ components:
           type: boolean
         requireCode:
           type: boolean
+        entriesOpen:
+          type: boolean
+        pendingEntries:
+          type: integer
         totalVoters:
           type: integer
         codesTotal:
@@ -611,10 +654,19 @@ components:
 
     SessionSettingsInput:
       type: object
-      required: [requireCode]
       properties:
         requireCode:
           type: boolean
+        entriesOpen:
+          type: boolean
+
+    CostumeStatusInput:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [approved, pending, rejected]
 
     VoterCode:
       type: object

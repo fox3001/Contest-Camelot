@@ -24,6 +24,7 @@ import type {
   AdminToken,
   Costume,
   CostumeInput,
+  CostumeStatusInput,
   HealthStatus,
   ResultsSummary,
   Session,
@@ -1358,6 +1359,78 @@ export const useCreateCostume = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getCreateCostumeMutationOptions(options));
+    }
+
+export const getSetCostumeStatusUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/costumes/${id}/status`
+}
+
+/**
+ * @summary Approve or reject a costume entry
+ */
+export const setCostumeStatus = async (id: number,
+    costumeStatusInput: CostumeStatusInput, options?: RequestInit): Promise<Costume> => {
+
+  return customFetch<Costume>(getSetCostumeStatusUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      costumeStatusInput,)
+  }
+);}
+
+
+
+
+export const getSetCostumeStatusMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setCostumeStatus>>, TError,{id: number;data: BodyType<CostumeStatusInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setCostumeStatus>>, TError,{id: number;data: BodyType<CostumeStatusInput>}, TContext> => {
+
+const mutationKey = ['setCostumeStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setCostumeStatus>>, {id: number;data: BodyType<CostumeStatusInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  setCostumeStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetCostumeStatusMutationResult = NonNullable<Awaited<ReturnType<typeof setCostumeStatus>>>
+    export type SetCostumeStatusMutationBody = BodyType<CostumeStatusInput>
+    export type SetCostumeStatusMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Approve or reject a costume entry
+ */
+export const useSetCostumeStatus = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setCostumeStatus>>, TError,{id: number;data: BodyType<CostumeStatusInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setCostumeStatus>>,
+        TError,
+        {id: number;data: BodyType<CostumeStatusInput>},
+        TContext
+      > => {
+      return useMutation(getSetCostumeStatusMutationOptions(options));
     }
 
 export const getUpdateCostumeUrl = (id: number,) => {

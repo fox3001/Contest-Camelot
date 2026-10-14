@@ -11,5 +11,7 @@ export interface Session {
   name: string;
   isOpen: boolean;
   requireCode: boolean;
+  entriesOpen: boolean;
+  entriesAvailable: boolean;
   createdAt: string;
 }

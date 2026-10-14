@@ -110,9 +110,9 @@ export declare const votersTable: import("drizzle-orm/pg-core").PgTableWithColum
 }>;
 export declare const insertVoterSchema: z.ZodObject<{
     sessionId: z.ZodInt;
+    deviceId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     nickname: z.ZodString;
     token: z.ZodString;
-    deviceId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {
     out: {};
     in: {};
