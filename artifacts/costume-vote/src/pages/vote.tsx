@@ -6,6 +6,7 @@ import { clearStoredVoter, getDeviceId, getStoredVoter } from "@/lib/storage";
 import { optimizedImage } from "@/lib/images";
 import { useTheme } from "@/lib/theme";
 import { OrganizerLink } from "@/components/OrganizerLink";
+import { VoterTabs } from "@/components/VoterTabs";
 
 type SaveState = "saving" | "saved" | "error";
 
@@ -94,11 +95,15 @@ export default function Vote() {
 
   // Il mio costume (iscritto da questo telefono): non si può votare
   const [ownId, setOwnId] = useState<number | null>(null);
+  const [hasEntry, setHasEntry] = useState(false);
   const costumeCount = costumes?.length ?? 0;
   useEffect(() => {
     fetch(`/api/entries/mine?deviceId=${encodeURIComponent(getDeviceId())}`)
       .then((r) => (r.ok ? r.json() : { entry: null }))
-      .then((d) => setOwnId(d.entry?.status === "approved" ? d.entry.id : null))
+      .then((d) => {
+        setHasEntry(!!d.entry);
+        setOwnId(d.entry?.status === "approved" ? d.entry.id : null);
+      })
       .catch(() => {});
   }, [costumeCount]);
 
@@ -215,8 +220,11 @@ export default function Vote() {
 
   if (!costumes || costumes.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-        <div className="max-w-xs w-full">
+      <div className="min-h-screen flex flex-col items-center px-6 text-center">
+        <div className="w-full max-w-lg pt-4">
+          <VoterTabs active="vote" hasEntry={hasEntry} />
+        </div>
+        <div className="max-w-xs w-full my-auto py-10">
           <p className="text-xs text-muted-foreground mb-1">Ciao, {stored?.nickname || "Votante"}</p>
           <h1 className="text-2xl font-serif text-primary mb-2">Ancora nessun costume in gara</h1>
           <p className="text-sm text-muted-foreground mb-6">
@@ -237,6 +245,9 @@ export default function Vote() {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3">
         <div className="max-w-lg mx-auto">
+          <div className="mb-3">
+            <VoterTabs active="vote" hasEntry={hasEntry} />
+          </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button onClick={() => setLocation("/")} className="text-muted-foreground hover:text-foreground transition" aria-label="Indietro">
@@ -261,14 +272,6 @@ export default function Vote() {
               placeholder="Cerca un costume per nome o numero"
               className="mt-3 w-full bg-background border border-input rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
-          )}
-          {entriesOpen && (
-            <button
-              onClick={() => setLocation("/iscriviti")}
-              className="mt-2 w-full text-xs text-primary flex items-center justify-center gap-1.5 py-1"
-            >
-              <span aria-hidden="true">＋</span> {theme.texts.entryButton}
-            </button>
           )}
           {errorCount > 0 && (
             <p className="mt-2 text-xs text-destructive">

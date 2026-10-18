@@ -51,6 +51,7 @@ const STATEMENTS: string[] = [
      created_at timestamp NOT NULL DEFAULT now(),
      CONSTRAINT voter_codes_session_code_unique UNIQUE (session_id, code)
    )`,
+  `ALTER TABLE sessions ALTER COLUMN entries_open SET DEFAULT true`,
   `CREATE TABLE IF NOT EXISTS app_settings (
      key text PRIMARY KEY,
      value jsonb NOT NULL,
@@ -68,12 +69,25 @@ const OPTIONAL_STATEMENTS: string[] = [
      ON costumes (session_id, device_id) WHERE device_id IS NOT NULL`,
 ];
 
+// Aggiornamenti dei dati da eseguire una sola volta (segnati in app_settings)
+const ONE_TIME: { key: string; sql: string }[] = [
+  // Le iscrizioni con foto diventano aperte di base: le apro anche nelle serate esistenti
+  { key: "migr_entries_open_default", sql: `UPDATE sessions SET entries_open = true` },
+];
+
 export async function ensureSchema(
   pool: Pool,
   log: (msg: string, err?: unknown) => void = () => {},
 ): Promise<void> {
   for (const sql of STATEMENTS) {
     await pool.query(sql);
+  }
+  for (const m of ONE_TIME) {
+    const done = await pool.query(`SELECT 1 FROM app_settings WHERE key = $1`, [m.key]);
+    if (done.rowCount === 0) {
+      await pool.query(m.sql);
+      await pool.query(`INSERT INTO app_settings (key, value) VALUES ($1, 'true'::jsonb) ON CONFLICT DO NOTHING`, [m.key]);
+    }
   }
   for (const sql of OPTIONAL_STATEMENTS) {
     try {

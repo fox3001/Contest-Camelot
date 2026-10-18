@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useGetActiveSession, getGetActiveSessionQueryKey } from "@workspace/api-client-react";
 import { getDeviceId, getLastNickname, getStoredVoter } from "@/lib/storage";
 import { compressImage, explainUploadError, optimizedImage, uploadWithProgress } from "@/lib/images";
+import { VoterTabs } from "@/components/VoterTabs";
 
 type Entry = { id: number; name: string; submittedBy: string | null; imagePath: string; status: "pending" | "approved" | "rejected" };
 
@@ -184,7 +185,10 @@ export default function Iscriviti() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
           </button>
-          <h1 className="text-lg font-serif text-foreground">Iscrivi il tuo costume</h1>
+          <h1 className="text-lg font-serif text-foreground">{entry ? "Il tuo costume" : "Iscrivi il tuo costume"}</h1>
+        </div>
+        <div className="max-w-lg mx-auto mt-3">
+          <VoterTabs active="entry" hasEntry={!!entry} />
         </div>
       </div>
 
