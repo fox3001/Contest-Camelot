@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useGetActiveSession, getGetActiveSessionQueryKey } from "@workspace/api-client-react";
-import { getDeviceId, getLastNickname } from "@/lib/storage";
+import { getDeviceId, getLastNickname, getStoredVoter } from "@/lib/storage";
 import { compressImage, optimizedImage, uploadWithProgress } from "@/lib/images";
 
 type Entry = { id: number; name: string; submittedBy: string | null; imagePath: string; status: "pending" | "approved" | "rejected" };
@@ -37,6 +37,8 @@ const STATUS_TEXT: Record<Entry["status"], { title: string; text: string; cls: s
 
 export default function Iscriviti() {
   const [, setLocation] = useLocation();
+  // Indietro: alla lista dei costumi se sei già entrato come votante, altrimenti alla home
+  const back = () => setLocation(getStoredVoter() ? "/vote" : "/");
   const { data: session, isLoading } = useGetActiveSession({
     query: { queryKey: getGetActiveSessionQueryKey(), refetchInterval: 10000, retry: false },
   });
@@ -177,7 +179,7 @@ export default function Iscriviti() {
     <div className="min-h-dvh pb-10">
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3">
         <div className="max-w-lg mx-auto flex items-center gap-3">
-          <button onClick={() => setLocation("/")} className="text-muted-foreground hover:text-foreground transition" aria-label="Indietro">
+          <button onClick={back} className="text-muted-foreground hover:text-foreground transition" aria-label="Indietro">
             <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
@@ -293,8 +295,8 @@ export default function Iscriviti() {
         )}
 
         {session?.isOpen && (
-          <button onClick={() => setLocation("/")} className="w-full text-sm text-muted-foreground underline underline-offset-4">
-            Vai a votare
+          <button onClick={() => setLocation(getStoredVoter() ? "/vote" : "/")} className="w-full text-sm text-muted-foreground underline underline-offset-4">
+            Vai ai costumi da votare
           </button>
         )}
       </div>

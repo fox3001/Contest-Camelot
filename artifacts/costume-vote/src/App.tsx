@@ -11,6 +11,8 @@ import Iscriviti from "./pages/iscriviti";
 import AdminLogin from "./pages/admin/login";
 import AdminDashboard from "./pages/admin/dashboard";
 import AdminGestione from "./pages/admin/gestione";
+import AdminAspetto from "./pages/admin/aspetto";
+import { BackgroundPattern, ThemeProvider } from "@/lib/theme";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,26 +22,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-function StarPattern() {
-  return (
-    <div
-      aria-hidden="true"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 0,
-        pointerEvents: "none",
-        backgroundImage: "url(/pattern%201.2.jpg)",
-        backgroundSize: "327px 327px",
-        backgroundRepeat: "repeat",
-        mixBlendMode: "screen",
-        opacity: 0.07,
-        animation: "stars-scroll 40s linear infinite",
-      }}
-    />
-  );
-}
 
 function Router() {
   return (
@@ -52,6 +34,7 @@ function Router() {
       <Route path="/admin" component={AdminLogin} />
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/gestione" component={AdminGestione} />
+      <Route path="/admin/aspetto" component={AdminAspetto} />
       
       <Route component={NotFound} />
     </Switch>
@@ -61,10 +44,11 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <div style={{ position: "relative", minHeight: "100dvh" }}>
-            <StarPattern />
+            <BackgroundPattern />
             <div style={{ position: "relative", zIndex: 1 }}>
               <Router />
             </div>
@@ -72,6 +56,7 @@ function App() {
         </WouterRouter>
         <Toaster />
       </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

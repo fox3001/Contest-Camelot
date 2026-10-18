@@ -44,9 +44,13 @@ export function folderFor(sessionId: number): string {
 }
 
 export function uploadSignature(sessionId: number) {
+  return signedUpload(folderFor(sessionId));
+}
+
+/** Firma per caricare un'immagine nella cartella indicata (es. grafica dell'admin). */
+export function signedUpload(folder: string) {
   if (!config) throw new Error("Cloudinary non configurato");
   const timestamp = Math.floor(Date.now() / 1000);
-  const folder = folderFor(sessionId);
   const signature = signParams({ folder, timestamp }, config.apiSecret);
   return {
     cloudName: config.cloudName,

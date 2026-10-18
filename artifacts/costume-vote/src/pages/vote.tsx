@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useListCostumes, useGetActiveSession, getGetActiveSessionQueryKey } from "@workspace/api-client-react";
 import { clearStoredVoter, getStoredVoter } from "@/lib/storage";
 import { optimizedImage } from "@/lib/images";
+import { useTheme } from "@/lib/theme";
 
 type SaveState = "saving" | "saved" | "error";
 
@@ -39,7 +40,7 @@ function StarRating({
             fill={star <= (hovered || score) ? "currentColor" : "none"}
             stroke="currentColor"
             strokeWidth={1.5}
-            style={{ color: star <= (hovered || score) ? "hsl(45 100% 50%)" : "hsl(270 40% 40%)" }}
+            style={{ color: star <= (hovered || score) ? "hsl(var(--primary))" : "hsl(var(--muted-foreground) / 0.6)" }}
           >
             <path
               strokeLinecap="round"
@@ -76,6 +77,7 @@ function seededShuffle<T>(items: T[], seed: string): T[] {
 
 export default function Vote() {
   const [, setLocation] = useLocation();
+  const { theme } = useTheme();
   const [votes, setVotes] = useState<Record<number, number>>({});
   const [status, setStatus] = useState<Record<number, SaveState>>({});
   const [existingLoaded, setExistingLoaded] = useState(false);
@@ -85,7 +87,9 @@ export default function Vote() {
   const stored = getStoredVoter();
   const voterToken = stored?.token ?? null;
   const { data: session } = useGetActiveSession({ query: { queryKey: getGetActiveSessionQueryKey(), refetchInterval: 4000 } });
-  const { data: costumes, isLoading } = useListCostumes();
+  // Si aggiorna da sola: i costumi approvati compaiono senza ricaricare la pagina
+  const { data: costumes, isLoading } = useListCostumes({ query: { refetchInterval: 10000 } as any });
+  const entriesOpen = !!session?.entriesOpen;
 
   useEffect(() => {
     if (!voterToken) setLocation("/");
@@ -179,14 +183,36 @@ export default function Vote() {
     );
   }
 
+  const entryButton = entriesOpen && (
+    <button
+      onClick={() => setLocation("/iscriviti")}
+      className="w-full flex items-center justify-center gap-2 border border-primary/50 text-primary rounded-xl py-3 text-sm font-medium hover:bg-primary/10 transition"
+    >
+      <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+      </svg>
+      {theme.texts.entryButton}
+    </button>
+  );
+
   if (!costumes || costumes.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-        <h1 className="text-2xl font-serif text-primary mb-2">Nessun costume</h1>
-        <p className="text-muted-foreground">I costumi non sono ancora stati caricati.</p>
+        <div className="max-w-xs w-full">
+          <p className="text-xs text-muted-foreground mb-1">Ciao, {stored?.nickname || "Votante"}</p>
+          <h1 className="text-2xl font-serif text-primary mb-2">Ancora nessun costume in gara</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            {entriesOpen
+              ? "Sei in costume? Iscriviti per primo! I costumi compaiono qui appena approvati: la pagina si aggiorna da sola."
+              : "I costumi compariranno qui appena saranno caricati: la pagina si aggiorna da sola."}
+          </p>
+          {entryButton}
+        </div>
       </div>
     );
   }
+
 
   return (
     <div className="min-h-screen pb-8">
@@ -202,7 +228,7 @@ export default function Vote() {
               </button>
               <div>
                 <p className="text-xs text-muted-foreground">Ciao, {stored?.nickname || "Votante"}</p>
-                <h1 className="text-lg font-serif text-foreground leading-tight">Vota i Costumi</h1>
+                <h1 className="text-lg font-serif text-foreground leading-tight">{theme.texts.voteTitle}</h1>
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -217,6 +243,14 @@ export default function Vote() {
               placeholder="Cerca un costume per nome o numero"
               className="mt-3 w-full bg-background border border-input rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
+          )}
+          {entriesOpen && (
+            <button
+              onClick={() => setLocation("/iscriviti")}
+              className="mt-2 w-full text-xs text-primary flex items-center justify-center gap-1.5 py-1"
+            >
+              <span aria-hidden="true">＋</span> {theme.texts.entryButton}
+            </button>
           )}
           {errorCount > 0 && (
             <p className="mt-2 text-xs text-destructive">
@@ -301,8 +335,8 @@ export default function Vote() {
               <svg viewBox="0 0 24 24" fill="none" className="w-8 h-8 text-primary mx-auto mb-2" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
               </svg>
-              <p className="text-primary font-serif text-lg">Grazie!</p>
-              <p className="text-sm text-muted-foreground mt-1">Hai votato tutti i costumi. Attendi il verdetto dell'araldo.</p>
+              <p className="text-primary font-serif text-lg">{theme.texts.thanksTitle}</p>
+              <p className="text-sm text-muted-foreground mt-1 whitespace-pre-line">{theme.texts.thanksText}</p>
             </motion.div>
           )}
         </AnimatePresence>

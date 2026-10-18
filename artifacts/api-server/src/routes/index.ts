@@ -6,6 +6,7 @@ import votersRouter from "./voters";
 import votesRouter from "./votes";
 import adminRouter from "./admin";
 import entriesRouter from "./entries";
+import themeRouter from "./theme";
 
 const router: IRouter = Router();
 
@@ -15,6 +16,7 @@ router.use("/costumes", costumesRouter);
 router.use("/voters", votersRouter);
 router.use("/votes", votesRouter);
 router.use("/entries", entriesRouter);
+router.use("/theme", themeRouter);
 router.use("/admin", adminRouter);
 
 export default router;
