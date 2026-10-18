@@ -111,6 +111,7 @@ router.get("/target", async (req, res) => {
         title: t.title,
         riddle: t.riddle,
         prize: t.prize,
+        prizeInfo: t.prizeInfo,
         status: t.status,
         createdAt: t.createdAt.toISOString(),
         wonAt: t.wonAt?.toISOString() ?? null,

@@ -13,6 +13,7 @@ type TargetRow = {
   title: string;
   riddle: string;
   prize: string;
+  prizeInfo: string;
   status: "active" | "won" | "cancelled";
   winnerNickname: string | null;
   claimCode: string | null;
@@ -36,6 +37,7 @@ export default function AdminTarget() {
   const [title, setTitle] = useState("Target Hunt");
   const [riddle, setRiddle] = useState("");
   const [prize, setPrize] = useState("Una consumazione");
+  const [prizeInfo, setPrizeInfo] = useState("");
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -84,7 +86,7 @@ export default function AdminTarget() {
       const r = await fetch("/api/admin/targets", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(adminRequest().headers as Record<string, string>) },
-        body: JSON.stringify({ costumeId, riddle, prize, title }),
+        body: JSON.stringify({ costumeId, riddle, prize, prizeInfo, title }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d?.error);
@@ -136,6 +138,7 @@ export default function AdminTarget() {
                 <p className="text-sm text-muted-foreground">Target (solo tu lo sai)</p>
                 <p className="font-serif text-lg text-foreground truncate">{active.costumeName}</p>
                 <p className="text-xs text-muted-foreground">Premio: {active.prize}</p>
+                {active.prizeInfo && <p className="text-xs text-muted-foreground whitespace-pre-line">{active.prizeInfo}</p>}
               </div>
             </div>
             <p className="text-sm text-foreground bg-background/50 rounded-xl p-3 whitespace-pre-line">“{active.riddle}”</p>
@@ -154,6 +157,7 @@ export default function AdminTarget() {
             <p className="text-xs text-muted-foreground mt-4">Il vincitore deve mostrarti questo codice:</p>
             <p className="font-mono text-4xl tracking-[0.2em] text-primary">{lastWon.claimCode}</p>
             <p className="text-sm text-foreground mt-2">Premio: {lastWon.prize}</p>
+            {lastWon.prizeInfo && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">{lastWon.prizeInfo}</p>}
           </div>
         )}
 
@@ -209,6 +213,19 @@ export default function AdminTarget() {
             </label>
           </div>
 
+          <label className="block" htmlFor="t-prize-info">
+            <span className="block text-xs text-muted-foreground mb-1.5">Info sul premio (facoltativo: la vedono tutti nell'avviso)</span>
+            <textarea
+              id="t-prize-info"
+              value={prizeInfo}
+              onChange={(e) => setPrizeInfo(e.target.value)}
+              maxLength={300}
+              rows={2}
+              placeholder="es. Uno shot di idromele offerto dalla casa: ritiralo al bancone entro mezzanotte."
+              className={inputClass}
+            />
+          </label>
+
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <button
@@ -255,7 +272,11 @@ export default function AdminTarget() {
               <p className="text-sm text-muted-foreground mb-2">
                 Tutti i votanti riceveranno l'indovinello. Vince il primo che scansiona il QR di <strong className="text-foreground">{chosen.name}</strong>.
               </p>
-              <p className="text-sm text-foreground bg-background/60 rounded-xl p-3 mb-5 whitespace-pre-line">“{riddle.trim()}”</p>
+              <p className="text-sm text-foreground bg-background/60 rounded-xl p-3 mb-2 whitespace-pre-line">“{riddle.trim()}”</p>
+              <p className="text-xs text-muted-foreground mb-5 whitespace-pre-line">
+                Premio: {prize.trim()}
+                {prizeInfo.trim() ? `\n${prizeInfo.trim()}` : ""}
+              </p>
               <div className="flex gap-3">
                 <button onClick={() => setConfirm(false)} className="flex-1 bg-muted text-foreground rounded-xl py-3 font-medium">
                   Annulla

@@ -478,6 +478,66 @@ router.put("/theme", async (req, res) => {
   }
 });
 
+// Temi salvati dall'admin per riusarli in altri eventi
+type SavedTheme = { name: string; theme: ReturnType<typeof sanitizeTheme>; savedAt: string };
+
+async function readSavedThemes(): Promise<SavedTheme[]> {
+  const [row] = await db.select().from(settingsTable).where(eq(settingsTable.key, "saved_themes"));
+  const list = Array.isArray(row?.value) ? (row!.value as any[]) : [];
+  return list
+    .filter((t) => t && typeof t.name === "string")
+    .map((t) => ({ name: t.name, theme: sanitizeTheme(t.theme), savedAt: String(t.savedAt ?? "") }));
+}
+
+async function writeSavedThemes(list: SavedTheme[]) {
+  await db
+    .insert(settingsTable)
+    .values({ key: "saved_themes", value: list })
+    .onConflictDoUpdate({ target: settingsTable.key, set: { value: list, updatedAt: new Date() } });
+}
+
+router.get("/themes", async (req, res) => {
+  try {
+    res.json({ themes: await readSavedThemes() });
+  } catch (err) {
+    req.log.error({ err }, "Failed to read saved themes");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/themes", async (req, res) => {
+  try {
+    const name = typeof req.body?.name === "string" ? req.body.name.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 40) : "";
+    if (!name) {
+      res.status(400).json({ error: "Nome del tema mancante" });
+      return;
+    }
+    const list = (await readSavedThemes()).filter((t) => t.name.toLowerCase() !== name.toLowerCase());
+    if (list.length >= 30) {
+      res.status(400).json({ error: "Troppi temi salvati: eliminane qualcuno" });
+      return;
+    }
+    list.unshift({ name, theme: sanitizeTheme(req.body?.theme), savedAt: new Date().toISOString() });
+    await writeSavedThemes(list);
+    res.json({ themes: list });
+  } catch (err) {
+    req.log.error({ err }, "Failed to save theme preset");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/themes", async (req, res) => {
+  try {
+    const name = typeof req.body?.name === "string" ? req.body.name : "";
+    const list = (await readSavedThemes()).filter((t) => t.name !== name);
+    await writeSavedThemes(list);
+    res.json({ themes: list });
+  } catch (err) {
+    req.log.error({ err }, "Failed to delete theme preset");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Target Hunt
 // ---------------------------------------------------------------------------
@@ -509,6 +569,7 @@ router.post("/targets", async (req, res) => {
     const costumeId = Number(b.costumeId);
     const riddle = clean(b.riddle, 400);
     const prize = clean(b.prize, 80);
+    const prizeInfo = clean(b.prizeInfo, 300);
     const title = clean(b.title, 40) || "Target Hunt";
     if (!Number.isInteger(costumeId) || !riddle || !prize) {
       res.status(400).json({ error: "Servono costume, indovinello e premio" });
@@ -530,7 +591,7 @@ router.post("/targets", async (req, res) => {
         .update(targetsTable)
         .set({ status: "cancelled" })
         .where(and(eq(targetsTable.sessionId, session.id), eq(targetsTable.status, "active")));
-      const [t] = await tx.insert(targetsTable).values({ sessionId: session.id, costumeId, riddle, prize, title }).returning();
+      const [t] = await tx.insert(targetsTable).values({ sessionId: session.id, costumeId, riddle, prize, prizeInfo, title }).returning();
       return t;
     });
     res.status(201).json({ id: target.id });

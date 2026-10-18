@@ -11,6 +11,8 @@ export const targetsTable = pgTable("targets", {
   title: text("title").notNull().default("Target Hunt"),
   riddle: text("riddle").notNull(),
   prize: text("prize").notNull(),
+  // Informazioni libere sul premio: dove ritirarlo, fino a quando, ecc.
+  prizeInfo: text("prize_info").notNull().default(""),
   // "active" | "won" | "cancelled"
   status: text("status").notNull().default("active"),
   winnerVoterId: integer("winner_voter_id").references(() => votersTable.id, { onDelete: "set null" }),
