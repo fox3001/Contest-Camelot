@@ -16,6 +16,7 @@ import AdminGestione from "./pages/admin/gestione";
 import AdminAspetto from "./pages/admin/aspetto";
 import AdminTarget from "./pages/admin/target";
 import { BackgroundPattern, ThemeProvider } from "@/lib/theme";
+import { HelpButton } from "@/components/Help";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,6 +58,8 @@ function App() {
             <BackgroundPattern />
             <div style={{ position: "relative", zIndex: 1 }}>
               <Router />
+              {/* Dentro lo stesso livello delle pagine: le loro finestre a tutto schermo lo coprono */}
+              <HelpButton />
             </div>
           </div>
         </WouterRouter>
