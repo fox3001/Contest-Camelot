@@ -27,6 +27,7 @@ import { checkConnection, cloudinaryEnabled, cloudinaryParseError, destroyImage,
 import { sanitizeTheme } from "../lib/theme";
 import { ensureHuntCodes, huntLeaderboard, makeHuntCode } from "../lib/hunt";
 import { latestTargets } from "../lib/targets";
+import { countDemo, createDemo, removeDemo } from "../lib/demo";
 import { targetsTable } from "@workspace/db";
 import { settingsTable } from "@workspace/db";
 
@@ -474,6 +475,45 @@ router.put("/theme", async (req, res) => {
     res.json({ theme: sanitizeTheme(row.value), updatedAt: row.updatedAt.toISOString() });
   } catch (err) {
     req.log.error({ err }, "Failed to save theme");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Utenti di prova
+// ---------------------------------------------------------------------------
+
+router.get("/demo", async (req, res) => {
+  try {
+    const session = await getCurrentSession();
+    res.json({ count: session ? await countDemo(session.id) : 0 });
+  } catch (err) {
+    req.log.error({ err }, "Failed to count demo users");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/demo", async (req, res) => {
+  try {
+    const session = await getCurrentSession();
+    if (!session) {
+      res.status(404).json({ error: "Crea prima una sessione" });
+      return;
+    }
+    res.json({ count: await createDemo(session.id, session.huntEnabled) });
+  } catch (err) {
+    req.log.error({ err }, "Failed to create demo users");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/demo", async (req, res) => {
+  try {
+    const session = await getCurrentSession();
+    if (session) await removeDemo(session.id);
+    res.json({ count: 0 });
+  } catch (err) {
+    req.log.error({ err }, "Failed to remove demo users");
     res.status(500).json({ error: "Internal server error" });
   }
 });
