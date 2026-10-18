@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, costumesTable, huntCatchesTable, sessionsTable, votersTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
+import { activeTarget, latestTargets, tryWinTarget } from "../lib/targets";
 
 /**
  * Modalità caccia ("Photo Hunters"): il votante scansiona il QR di un costume
@@ -29,7 +30,8 @@ router.post("/catch", async (req, res) => {
       return;
     }
     const [session] = await db.select().from(sessionsTable).where(eq(sessionsTable.id, voter.sessionId)).limit(1);
-    if (!session?.huntEnabled) {
+    // Si cattura con la modalità caccia attiva oppure durante una Target Hunt
+    if (!session?.huntEnabled && !(await activeTarget(voter.sessionId))) {
       res.status(403).json({ error: "hunt_off" });
       return;
     }
@@ -55,7 +57,9 @@ router.post("/catch", async (req, res) => {
       .select({ count: sql<number>`count(*)::int` })
       .from(huntCatchesTable)
       .where(eq(huntCatchesTable.voterId, voter.id));
-    res.json({ costumeId: costume.id, name: costume.name, imagePath: costume.imagePath, already: inserted.length === 0, count });
+    // Target Hunt: il primo che scansiona il costume scelto dall'admin vince
+    const targetWin = await tryWinTarget(voter.sessionId, costume.id, voter.id);
+    res.json({ costumeId: costume.id, name: costume.name, imagePath: costume.imagePath, already: inserted.length === 0, count, targetWin });
   } catch (err) {
     req.log.error({ err }, "Failed to record catch");
     res.status(500).json({ error: "server_error" });
@@ -83,6 +87,40 @@ router.get("/me", async (req, res) => {
     });
   } catch (err) {
     req.log.error({ err }, "Failed to read hunt status");
+    res.status(500).json({ error: "server_error" });
+  }
+});
+
+// Target Hunt per i votanti: l'ultimo target (attivo o vinto), senza svelare il costume
+router.get("/target", async (req, res) => {
+  try {
+    const voter = await voterFromToken(req.query.token);
+    if (!voter) {
+      res.status(401).json({ error: "not_registered" });
+      return;
+    }
+    const [t] = await latestTargets(voter.sessionId, 1);
+    if (!t || t.status === "cancelled") {
+      res.json({ target: null });
+      return;
+    }
+    const iWon = t.winnerVoterId === voter.id;
+    res.json({
+      target: {
+        id: t.id,
+        title: t.title,
+        riddle: t.riddle,
+        prize: t.prize,
+        status: t.status,
+        createdAt: t.createdAt.toISOString(),
+        wonAt: t.wonAt?.toISOString() ?? null,
+        winnerNickname: t.status === "won" ? t.winnerNickname : null,
+        iWon,
+        claimCode: iWon ? t.claimCode : null,
+      },
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to read target");
     res.status(500).json({ error: "server_error" });
   }
 });

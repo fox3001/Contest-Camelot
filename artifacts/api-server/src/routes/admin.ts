@@ -26,6 +26,8 @@ import { rankCostumes } from "../lib/ranking";
 import { checkConnection, cloudinaryEnabled, cloudinaryParseError, destroyImage, signedUpload, uploadPrivateText } from "../lib/cloudinary";
 import { sanitizeTheme } from "../lib/theme";
 import { ensureHuntCodes, huntLeaderboard, makeHuntCode } from "../lib/hunt";
+import { latestTargets } from "../lib/targets";
+import { targetsTable } from "@workspace/db";
 import { settingsTable } from "@workspace/db";
 
 const router = Router();
@@ -472,6 +474,79 @@ router.put("/theme", async (req, res) => {
     res.json({ theme: sanitizeTheme(row.value), updatedAt: row.updatedAt.toISOString() });
   } catch (err) {
     req.log.error({ err }, "Failed to save theme");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Target Hunt
+// ---------------------------------------------------------------------------
+
+router.get("/targets", async (req, res) => {
+  try {
+    const session = await getCurrentSession();
+    if (!session) {
+      res.json([]);
+      return;
+    }
+    const rows = await latestTargets(session.id, 50);
+    res.json(rows.map((t) => ({ ...t, createdAt: t.createdAt.toISOString(), wonAt: t.wonAt?.toISOString() ?? null })));
+  } catch (err) {
+    req.log.error({ err }, "Failed to list targets");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/targets", async (req, res) => {
+  try {
+    const session = await getCurrentSession();
+    if (!session) {
+      res.status(404).json({ error: "No session found" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const clean = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/[\u0000-\u0009\u000b-\u001f]/g, " ").trim().slice(0, max) : "");
+    const costumeId = Number(b.costumeId);
+    const riddle = clean(b.riddle, 400);
+    const prize = clean(b.prize, 80);
+    const title = clean(b.title, 40) || "Target Hunt";
+    if (!Number.isInteger(costumeId) || !riddle || !prize) {
+      res.status(400).json({ error: "Servono costume, indovinello e premio" });
+      return;
+    }
+    const [costume] = await db
+      .select()
+      .from(costumesTable)
+      .where(and(eq(costumesTable.id, costumeId), eq(costumesTable.sessionId, session.id), eq(costumesTable.status, "approved")))
+      .limit(1);
+    if (!costume) {
+      res.status(400).json({ error: "Costume non in gara" });
+      return;
+    }
+    await ensureHuntCodes(session.id);
+    const target = await db.transaction(async (tx) => {
+      // Un solo target attivo alla volta: quello precedente viene annullato
+      await tx
+        .update(targetsTable)
+        .set({ status: "cancelled" })
+        .where(and(eq(targetsTable.sessionId, session.id), eq(targetsTable.status, "active")));
+      const [t] = await tx.insert(targetsTable).values({ sessionId: session.id, costumeId, riddle, prize, title }).returning();
+      return t;
+    });
+    res.status(201).json({ id: target.id });
+  } catch (err) {
+    req.log.error({ err }, "Failed to create target");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/targets/:id/cancel", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    await db.update(targetsTable).set({ status: "cancelled" }).where(and(eq(targetsTable.id, id), eq(targetsTable.status, "active")));
+    res.status(204).end();
+  } catch (err) {
+    req.log.error({ err }, "Failed to cancel target");
     res.status(500).json({ error: "Internal server error" });
   }
 });

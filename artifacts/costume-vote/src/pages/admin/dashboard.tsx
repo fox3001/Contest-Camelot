@@ -325,6 +325,14 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            <button
+              onClick={() => setLocation("/admin/target")}
+              className="w-full flex items-center justify-between bg-card border border-primary/40 rounded-xl px-4 py-3 text-sm text-foreground hover:border-primary transition"
+            >
+              <span>🎯 Target Hunt: indovinello a tutti, vince il primo che trova il costume</span>
+              <span className="text-primary font-medium shrink-0 ml-2">Apri →</span>
+            </button>
+
             {results.huntEnabled && (
               <div className="bg-card border border-border rounded-xl p-4">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">🎯 {results.huntName}</p>

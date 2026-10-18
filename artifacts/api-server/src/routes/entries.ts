@@ -4,6 +4,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { getCurrentSession } from "../lib/sessions";
 import { cloudinaryEnabled, destroyImage, isOwnUpload, uploadSignature } from "../lib/cloudinary";
 import { ensureHuntCodes, makeHuntCode } from "../lib/hunt";
+import { activeTarget } from "../lib/targets";
 
 /**
  * Iscrizioni dei partecipanti: ogni telefono iscrive un costume per sessione.
@@ -73,9 +74,11 @@ router.get("/mine", async (req, res) => {
       res.json({ entry: null });
       return;
     }
-    if (session.huntEnabled) await ensureHuntCodes(session.id);
+    // Il QR serve con la modalità caccia o durante una Target Hunt
+    const qrOn = session.huntEnabled || !!(await activeTarget(session.id));
+    if (qrOn) await ensureHuntCodes(session.id);
     const entry = await findEntry(session.id, deviceId);
-    res.json({ entry: entry ? serializeEntry(entry, session.huntEnabled) : null, huntEnabled: session.huntEnabled, huntName: session.huntName });
+    res.json({ entry: entry ? serializeEntry(entry, qrOn) : null, huntEnabled: qrOn, huntName: session.huntEnabled ? session.huntName : "Target Hunt" });
   } catch (err) {
     req.log.error({ err }, "Failed to get entry");
     res.status(500).json({ error: "server_error" });

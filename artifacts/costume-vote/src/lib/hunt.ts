@@ -17,8 +17,10 @@ export async function qrDataUrl(text: string, size = 600) {
   return QRCode.toDataURL(text, { margin: 1, width: size, errorCorrectionLevel: "M" });
 }
 
+export type TargetWin = { targetId: number; title: string; prize: string; claimCode: string };
+
 export type CatchResult =
-  | { ok: true; costumeId: number; name: string; imagePath: string; already: boolean; count: number }
+  | { ok: true; costumeId: number; name: string; imagePath: string; already: boolean; count: number; targetWin: TargetWin | null }
   | { ok: false; error: string; costumeId?: number; name?: string };
 
 const PENDING_KEY = "pendingHuntCode";
@@ -53,6 +55,8 @@ export async function catchCostume(code: string): Promise<CatchResult> {
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) return { ok: false, error: d?.error ?? "server_error", costumeId: d?.costumeId, name: d?.name };
+    // Avvisa la Target Hunt: chi ha vinto vede subito la schermata del premio
+    if (d.targetWin) window.dispatchEvent(new CustomEvent("target-win", { detail: d.targetWin }));
     return { ok: true, ...d };
   } catch {
     return { ok: false, error: "network" };
@@ -63,7 +67,7 @@ export const CATCH_ERRORS: Record<string, string> = {
   unknown_code: "Questo codice non corrisponde a nessun costume in gara.",
   invalid_code: "Codice non valido: sono 5 caratteri, lettere e numeri.",
   own_costume: "È il tuo costume: non puoi catturarlo né votarlo.",
-  hunt_off: "La caccia non è attiva in questo momento: puoi votare direttamente.",
+  hunt_off: "Nessuna caccia attiva in questo momento.",
   not_registered: "Prima entra come votante.",
   network: "Connessione assente: riprova.",
   server_error: "Qualcosa è andato storto, riprova.",

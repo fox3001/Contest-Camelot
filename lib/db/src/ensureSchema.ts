@@ -55,6 +55,19 @@ const STATEMENTS: string[] = [
   `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS hunt_enabled boolean NOT NULL DEFAULT false`,
   `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS hunt_name text NOT NULL DEFAULT 'Photo Hunters'`,
   `ALTER TABLE costumes ADD COLUMN IF NOT EXISTS hunt_code text`,
+  `CREATE TABLE IF NOT EXISTS targets (
+     id serial PRIMARY KEY,
+     session_id integer NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+     costume_id integer NOT NULL REFERENCES costumes(id) ON DELETE CASCADE,
+     title text NOT NULL DEFAULT 'Target Hunt',
+     riddle text NOT NULL,
+     prize text NOT NULL,
+     status text NOT NULL DEFAULT 'active',
+     winner_voter_id integer REFERENCES voters(id) ON DELETE SET NULL,
+     claim_code text,
+     created_at timestamp NOT NULL DEFAULT now(),
+     won_at timestamp
+   )`,
   `CREATE TABLE IF NOT EXISTS hunt_catches (
      id serial PRIMARY KEY,
      session_id integer NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,

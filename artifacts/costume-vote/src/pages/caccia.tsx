@@ -40,6 +40,15 @@ export default function Caccia() {
         {result.ok ? (
           <>
             <img src={optimizedImage(result.imagePath, 500)} alt={result.name} className="w-full aspect-[4/5] object-cover rounded-xl mb-4 bg-muted" />
+            {result.targetWin && (
+              <div className="mb-4 rounded-xl bg-primary text-primary-foreground p-4">
+                <p className="text-3xl" aria-hidden="true">🏆</p>
+                <p className="font-serif text-xl">Hai vinto la {result.targetWin.title}!</p>
+                <p className="text-sm mt-1">{result.targetWin.prize}</p>
+                <p className="text-xs mt-3 opacity-80">Mostra questo schermo all'organizzazione. Codice premio:</p>
+                <p className="font-mono text-4xl tracking-[0.2em]">{result.targetWin.claimCode}</p>
+              </div>
+            )}
             <p className="text-sm text-primary font-medium">{result.already ? "Già catturato" : "Catturato!"}</p>
             <h1 className="text-2xl font-serif text-foreground mt-1">{result.name}</h1>
             <p className="text-sm text-muted-foreground mt-2">Hai catturato {result.count} {result.count === 1 ? "costume" : "costumi"}. Ora puoi votarlo.</p>

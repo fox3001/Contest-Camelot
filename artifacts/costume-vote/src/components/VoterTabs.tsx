@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import { getStoredVoter } from "@/lib/storage";
+import { TargetAlert } from "@/components/TargetAlert";
 
 /** Le due sezioni del votante, sempre visibili: votare o iscrivere il proprio costume. */
 export function VoterTabs({ active, hasEntry }: { active: "vote" | "entry"; hasEntry?: boolean }) {
@@ -9,6 +10,7 @@ export function VoterTabs({ active, hasEntry }: { active: "vote" | "entry"; hasE
       on ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground"
     }`;
   return (
+    <>
     <div className="flex gap-1 bg-card border border-border rounded-2xl p-1" role="tablist">
       <button role="tab" aria-selected={active === "vote"} className={tab(active === "vote")} onClick={() => setLocation(getStoredVoter() ? "/vote" : "/entra")}>
         <span aria-hidden="true">★</span> Vota i costumi
@@ -21,5 +23,7 @@ export function VoterTabs({ active, hasEntry }: { active: "vote" | "entry"; hasE
         {hasEntry ? "Il tuo costume" : "Iscrivi il tuo costume"}
       </button>
     </div>
+    {getStoredVoter() && <TargetAlert />}
+    </>
   );
 }

@@ -14,6 +14,7 @@ import AdminLogin from "./pages/admin/login";
 import AdminDashboard from "./pages/admin/dashboard";
 import AdminGestione from "./pages/admin/gestione";
 import AdminAspetto from "./pages/admin/aspetto";
+import AdminTarget from "./pages/admin/target";
 import { BackgroundPattern, ThemeProvider } from "@/lib/theme";
 
 const queryClient = new QueryClient({
@@ -39,6 +40,7 @@ function Router() {
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/gestione" component={AdminGestione} />
       <Route path="/admin/aspetto" component={AdminAspetto} />
+      <Route path="/admin/target" component={AdminTarget} />
       
       <Route component={NotFound} />
     </Switch>
