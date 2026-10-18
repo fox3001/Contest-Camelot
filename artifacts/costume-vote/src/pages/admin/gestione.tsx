@@ -20,8 +20,9 @@ import {
   type Costume,
 } from "@workspace/api-client-react";
 import { optimizedImage } from "@/lib/images";
+import { huntUrl, qrDataUrl } from "@/lib/hunt";
 import { useQueryClient } from "@tanstack/react-query";
-import { adminRequest, clearAdminToken, getAdminToken } from "@/lib/storage";
+import { adminRequest, clearAdminToken, getAdminToken, setAdminToken } from "@/lib/storage";
 
 const MAX_COSTUMES = 180;
 
@@ -377,6 +378,200 @@ function EntriesPanel({ costumes, onChanged }: { costumes: Costume[] | undefined
   );
 }
 
+function HuntPanel({ costumes }: { costumes: Costume[] | undefined }) {
+  const queryClient = useQueryClient();
+  const { data: results } = useGetResults({ query: { queryKey: getGetResultsQueryKey(), retry: false, refetchInterval: 10000 }, request: adminRequest() });
+  const [name, setName] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  if (!results) return null;
+  const shownName = name ?? results.huntName;
+
+  const save = async (patch: { huntEnabled?: boolean; huntName?: string }) => {
+    setBusy(true);
+    setError("");
+    try {
+      await updateSessionSettings(results.sessionId, patch, adminRequest());
+      queryClient.invalidateQueries({ queryKey: getGetResultsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetActiveSessionQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getListAdminCostumesQueryKey() });
+      if (patch.huntName) setName(null);
+    } catch {
+      setError("Operazione non riuscita, riprova.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const printQr = async () => {
+    const list = (costumes ?? []).filter((c) => c.status === "approved" && c.huntCode);
+    const w = window.open("", "_blank");
+    if (!w) return;
+    const cards = await Promise.all(
+      list.map(async (c) => {
+        const qr = await qrDataUrl(huntUrl(c.huntCode!), 400);
+        const esc = (t: string) => t.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]!);
+        return `<div class="c"><img class="q" src="${qr}"/><b>${esc(c.name)}</b><span>${c.huntCode}</span></div>`;
+      }),
+    );
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>QR ${results.huntName}</title>
+      <style>body{font-family:Georgia,serif;margin:10mm}.g{display:grid;grid-template-columns:repeat(3,1fr);gap:5mm}
+      .c{border:1px dashed #888;padding:4mm;text-align:center;break-inside:avoid}.q{width:100%;height:auto}
+      .c b{display:block;font-size:11pt;margin-top:2mm}.c span{font-family:monospace;font-size:14pt;letter-spacing:3pt}</style></head>
+      <body><div class="g">${cards.join("")}</div><script>window.onload=()=>window.print()<\/script></body></html>`);
+    w.document.close();
+  };
+
+  const hunters = results.hunters ?? [];
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-medium text-foreground">Modalità caccia: {results.huntName}</h2>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+            Quando è attiva, per votare un costume bisogna trovarlo e scansionarne il QR. Chi è in costume trova il suo QR nella scheda "Il tuo costume". Puoi accenderla e spegnerla quando vuoi.
+          </p>
+        </div>
+        <button
+          role="switch"
+          aria-checked={results.huntEnabled}
+          aria-label="Modalità caccia"
+          disabled={busy}
+          onClick={() => save({ huntEnabled: !results.huntEnabled })}
+          className={`relative shrink-0 w-12 h-7 rounded-full transition ${results.huntEnabled ? "bg-primary" : "bg-muted"} disabled:opacity-50`}
+        >
+          <span className={`absolute top-1 w-5 h-5 rounded-full bg-background transition-all ${results.huntEnabled ? "left-6" : "left-1"}`} />
+        </button>
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          value={shownName}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={40}
+          aria-label="Nome della modalità"
+          className="flex-1 bg-background border border-input rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+        />
+        <button
+          disabled={busy || !shownName.trim() || shownName.trim() === results.huntName}
+          onClick={() => save({ huntName: shownName.trim() })}
+          className="bg-muted text-foreground text-sm rounded-xl px-4 disabled:opacity-40"
+        >
+          Rinomina
+        </button>
+      </div>
+
+      <button onClick={printQr} className="w-full bg-muted text-foreground rounded-xl py-2.5 text-sm hover:opacity-80 transition">
+        Stampa i QR dei costumi in gara
+      </button>
+
+      <div>
+        <p className="text-xs font-medium text-primary uppercase tracking-widest mb-2">Classifica cacciatori (solo admin)</p>
+        {hunters.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Ancora nessuna cattura.</p>
+        ) : (
+          <ol className="space-y-1">
+            {hunters.slice(0, 10).map((h) => (
+              <li key={h.rank} className="flex items-center gap-3 text-sm">
+                <span className="w-6 text-center text-muted-foreground">{h.rank}</span>
+                <span className="flex-1 truncate text-foreground">{h.nickname}</span>
+                <span className="text-primary font-medium">{h.count}</span>
+                <span className="text-xs text-muted-foreground w-16 text-right">{h.minutes} min</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+function PasswordPanel() {
+  const [current, setCurrent] = useState<string | null>(null);
+  const [show, setShow] = useState(false);
+  const [next, setNext] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/password", adminRequest())
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setCurrent(d.password))
+      .catch(() => {});
+  }, []);
+
+  const save = async () => {
+    setMsg(null);
+    if (next.trim().length < 4) return setMsg({ ok: false, text: "Almeno 4 caratteri." });
+    setBusy(true);
+    try {
+      const r = await fetch("/api/admin/password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...(adminRequest().headers as Record<string, string>) },
+        body: JSON.stringify({ password: next.trim() }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error);
+      setAdminToken(d.token);
+      setCurrent(next.trim());
+      setNext("");
+      setShow(true);
+      setMsg({
+        ok: true,
+        text: d.backup
+          ? "Password cambiata. Copia aggiornata su Cloudinary: Media Library → cartella contest-camelot → password-admin.txt."
+          : "Password cambiata. La copia su Cloudinary non è riuscita (controlla il collegamento Cloudinary): segnatela.",
+      });
+    } catch (e: any) {
+      setMsg({ ok: false, text: e?.message || "Cambio non riuscito, riprova." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow">
+      <div>
+        <h2 className="text-base font-medium text-foreground">Password del pannello</h2>
+        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+          Cambiandola, gli altri dispositivi entrati come admin dovranno rifare l'accesso.
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="flex-1 font-mono text-sm bg-background border border-input rounded-xl px-4 py-3 text-foreground truncate">
+          {current === null ? "…" : show ? current : "•".repeat(Math.min(12, current.length || 8))}
+        </span>
+        <button type="button" onClick={() => setShow((v) => !v)} className="bg-muted text-foreground text-xs rounded-lg px-3 py-3 shrink-0">
+          {show ? "Nascondi" : "Mostra"}
+        </button>
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+          placeholder="Nuova password"
+          maxLength={100}
+          autoComplete="off"
+          className="flex-1 bg-background border border-input rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+          aria-label="Nuova password"
+        />
+        <button type="button" onClick={save} disabled={busy || !next.trim()} className="bg-primary text-primary-foreground text-sm font-semibold rounded-xl px-4 disabled:opacity-50 shrink-0">
+          {busy ? "..." : "Cambia"}
+        </button>
+      </div>
+      {msg && <p className={`text-xs rounded-lg px-3 py-2 ${msg.ok ? "bg-primary/10 text-foreground" : "bg-destructive/10 text-foreground"}`}>{msg.text}</p>}
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
+        Se la dimentichi: Cloudinary → Media Library → contest-camelot → password-admin.txt, oppure nel database Neon (SQL Editor:{" "}
+        <span className="font-mono">select value from app_settings where key = 'admin_password'</span>).
+      </p>
+    </div>
+  );
+}
+
 export default function AdminGestione() {
   const [, setLocation] = useLocation();
   const token = getAdminToken();
@@ -538,7 +733,11 @@ export default function AdminGestione() {
 
         <EntriesPanel costumes={costumes} onChanged={refresh} />
 
+        <HuntPanel costumes={costumes} />
+
         <VoterCodesPanel />
+
+        <PasswordPanel />
 
         <div>
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">

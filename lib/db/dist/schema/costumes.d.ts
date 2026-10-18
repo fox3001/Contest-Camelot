@@ -156,6 +156,23 @@ export declare const costumesTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        huntCode: import("drizzle-orm/pg-core").PgColumn<{
+            name: "hunt_code";
+            tableName: "costumes";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "costumes";
@@ -188,6 +205,7 @@ export declare const insertCostumeSchema: z.ZodObject<{
     deviceId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     submittedBy: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     imagePublicId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    huntCode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, {
     out: {};
     in: {};

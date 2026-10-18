@@ -4,8 +4,41 @@ import { motion } from "framer-motion";
 import { useGetActiveSession, getGetActiveSessionQueryKey } from "@workspace/api-client-react";
 import { getDeviceId, getLastNickname, getStoredVoter } from "@/lib/storage";
 import { compressImage, explainUploadError, optimizedImage, uploadWithProgress } from "@/lib/images";
+import { VoterTabs } from "@/components/VoterTabs";
+import { huntUrl, qrDataUrl } from "@/lib/hunt";
 
-type Entry = { id: number; name: string; submittedBy: string | null; imagePath: string; status: "pending" | "approved" | "rejected" };
+type Entry = {
+  id: number;
+  name: string;
+  submittedBy: string | null;
+  imagePath: string;
+  status: "pending" | "approved" | "rejected";
+  huntCode?: string | null;
+};
+
+/** QR personale del costume (modalità caccia): lo si mostra a chi vuole votarlo. */
+function HuntQr({ code, huntName, costumeName }: { code: string; huntName: string; costumeName: string }) {
+  const [src, setSrc] = useState("");
+  useEffect(() => {
+    qrDataUrl(huntUrl(code), 700).then(setSrc).catch(() => {});
+  }, [code]);
+  return (
+    <div className="bg-card border border-primary/50 rounded-2xl p-5 text-center shadow-md">
+      <p className="text-xs uppercase tracking-widest text-primary">{huntName}</p>
+      <p className="text-sm text-foreground mt-1">Mostra questo QR a chi vuole votarti: per votarti deve scansionarlo.</p>
+      <div className="mt-4 mx-auto w-full max-w-[280px] bg-white rounded-2xl p-3">
+        {src ? <img src={src} alt={`QR di ${costumeName}`} className="w-full h-auto" /> : <div className="aspect-square" />}
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">Oppure detta il codice</p>
+      <p className="font-mono text-3xl tracking-[0.35em] text-foreground">{code}</p>
+      {src && (
+        <a href={src} download={`qr-${costumeName.replace(/\s+/g, "-").toLowerCase()}.png`} className="mt-3 inline-block text-xs text-primary underline underline-offset-4">
+          Salva il QR nelle foto
+        </a>
+      )}
+    </div>
+  );
+}
 
 const ERRORS: Record<string, string> = {
   entries_closed: "Le iscrizioni sono chiuse.",
@@ -44,6 +77,7 @@ export default function Iscriviti() {
   });
 
   const [entry, setEntry] = useState<Entry | null>(null);
+  const [huntName, setHuntName] = useState("Photo Hunters");
   const [loaded, setLoaded] = useState(false);
   const [name, setName] = useState("");
   const [author, setAuthor] = useState(() => getLastNickname());
@@ -61,9 +95,10 @@ export default function Iscriviti() {
     const load = () =>
       fetch(`/api/entries/mine?deviceId=${encodeURIComponent(getDeviceId())}`)
         .then((r) => (r.ok ? r.json() : { entry: null }))
-        .then((d: { entry: Entry | null }) => {
+        .then((d: { entry: Entry | null; huntName?: string }) => {
           if (!alive) return;
           setEntry(d.entry);
+          if (d.huntName) setHuntName(d.huntName);
           setLoaded(true);
         })
         .catch(() => alive && setLoaded(true));
@@ -184,7 +219,10 @@ export default function Iscriviti() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
           </button>
-          <h1 className="text-lg font-serif text-foreground">Iscrivi il tuo costume</h1>
+          <h1 className="text-lg font-serif text-foreground">{entry ? "Il tuo costume" : "Iscrivi il tuo costume"}</h1>
+        </div>
+        <div className="max-w-lg mx-auto mt-3">
+          <VoterTabs active="entry" hasEntry={!!entry} />
         </div>
       </div>
 
@@ -199,6 +237,8 @@ export default function Iscriviti() {
             </div>
           </div>
         )}
+
+        {entry?.status === "approved" && entry.huntCode && <HuntQr code={entry.huntCode} huntName={huntName} costumeName={entry.name} />}
 
         {closed && !entry && (
           <div className="bg-card border border-border rounded-2xl p-6 text-center">
@@ -219,7 +259,9 @@ export default function Iscriviti() {
         {showForm && (
           <form onSubmit={submit} className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-md">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              {entry ? "Vuoi cambiare foto o nome? Carica di nuovo qui sotto." : "Una foto a figura intera, con buona luce. Un'iscrizione per telefono: per coppie e gruppi iscrive uno solo."}
+              {entry
+                ? "Vuoi cambiare foto o nome? Carica di nuovo qui sotto."
+                : "Una foto a figura intera, con buona luce. Un'iscrizione per telefono: per coppie e gruppi iscrive uno solo. Da questo telefono non potrai votare il tuo costume."}
             </p>
 
             <div>

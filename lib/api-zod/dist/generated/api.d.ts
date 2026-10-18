@@ -26,6 +26,8 @@ export declare const GetActiveSessionResponse: zod.ZodObject<{
     requireCode: zod.ZodBoolean;
     entriesOpen: zod.ZodBoolean;
     entriesAvailable: zod.ZodBoolean;
+    huntEnabled: zod.ZodBoolean;
+    huntName: zod.ZodString;
     createdAt: zod.ZodString;
 }, "strip", zod.ZodTypeAny, {
     id: number;
@@ -34,6 +36,8 @@ export declare const GetActiveSessionResponse: zod.ZodObject<{
     requireCode: boolean;
     entriesOpen: boolean;
     entriesAvailable: boolean;
+    huntEnabled: boolean;
+    huntName: string;
     createdAt: string;
 }, {
     id: number;
@@ -42,6 +46,8 @@ export declare const GetActiveSessionResponse: zod.ZodObject<{
     requireCode: boolean;
     entriesOpen: boolean;
     entriesAvailable: boolean;
+    huntEnabled: boolean;
+    huntName: string;
     createdAt: string;
 }>;
 /**
@@ -74,6 +80,7 @@ export declare const ListCostumesResponseItem: zod.ZodObject<{
     displayOrder: zod.ZodNumber;
     status: zod.ZodEnum<["approved", "pending", "rejected"]>;
     submittedBy: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    huntCode: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
 }, "strip", zod.ZodTypeAny, {
     status: "approved" | "pending" | "rejected";
     id: number;
@@ -82,6 +89,7 @@ export declare const ListCostumesResponseItem: zod.ZodObject<{
     imagePath: string;
     displayOrder: number;
     submittedBy?: string | null | undefined;
+    huntCode?: string | null | undefined;
 }, {
     status: "approved" | "pending" | "rejected";
     id: number;
@@ -90,6 +98,7 @@ export declare const ListCostumesResponseItem: zod.ZodObject<{
     imagePath: string;
     displayOrder: number;
     submittedBy?: string | null | undefined;
+    huntCode?: string | null | undefined;
 }>;
 export declare const ListCostumesResponse: zod.ZodArray<zod.ZodObject<{
     id: zod.ZodNumber;
@@ -99,6 +108,7 @@ export declare const ListCostumesResponse: zod.ZodArray<zod.ZodObject<{
     displayOrder: zod.ZodNumber;
     status: zod.ZodEnum<["approved", "pending", "rejected"]>;
     submittedBy: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    huntCode: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
 }, "strip", zod.ZodTypeAny, {
     status: "approved" | "pending" | "rejected";
     id: number;
@@ -107,6 +117,7 @@ export declare const ListCostumesResponse: zod.ZodArray<zod.ZodObject<{
     imagePath: string;
     displayOrder: number;
     submittedBy?: string | null | undefined;
+    huntCode?: string | null | undefined;
 }, {
     status: "approved" | "pending" | "rejected";
     id: number;
@@ -115,6 +126,7 @@ export declare const ListCostumesResponse: zod.ZodArray<zod.ZodObject<{
     imagePath: string;
     displayOrder: number;
     submittedBy?: string | null | undefined;
+    huntCode?: string | null | undefined;
 }>, "many">;
 /**
  * @summary Submit votes for costumes
@@ -179,6 +191,24 @@ export declare const GetResultsResponse: zod.ZodObject<{
     requireCode: zod.ZodBoolean;
     entriesOpen: zod.ZodBoolean;
     pendingEntries: zod.ZodNumber;
+    huntEnabled: zod.ZodBoolean;
+    huntName: zod.ZodString;
+    hunters: zod.ZodArray<zod.ZodObject<{
+        nickname: zod.ZodString;
+        count: zod.ZodNumber;
+        minutes: zod.ZodNumber;
+        rank: zod.ZodNumber;
+    }, "strip", zod.ZodTypeAny, {
+        nickname: string;
+        count: number;
+        minutes: number;
+        rank: number;
+    }, {
+        nickname: string;
+        count: number;
+        minutes: number;
+        rank: number;
+    }>, "many">;
     totalVoters: zod.ZodNumber;
     codesTotal: zod.ZodNumber;
     codesUsed: zod.ZodNumber;
@@ -195,20 +225,20 @@ export declare const GetResultsResponse: zod.ZodObject<{
         id: number;
         name: string;
         imagePath: string;
+        rank: number;
         totalVotes: number;
         sumScores: number;
         avgScore: number;
         weightedScore: number;
-        rank: number;
     }, {
         id: number;
         name: string;
         imagePath: string;
+        rank: number;
         totalVotes: number;
         sumScores: number;
         avgScore: number;
         weightedScore: number;
-        rank: number;
     }>, "many">;
     allCostumes: zod.ZodArray<zod.ZodObject<{
         id: zod.ZodNumber;
@@ -223,28 +253,36 @@ export declare const GetResultsResponse: zod.ZodObject<{
         id: number;
         name: string;
         imagePath: string;
+        rank: number;
         totalVotes: number;
         sumScores: number;
         avgScore: number;
         weightedScore: number;
-        rank: number;
     }, {
         id: number;
         name: string;
         imagePath: string;
+        rank: number;
         totalVotes: number;
         sumScores: number;
         avgScore: number;
         weightedScore: number;
-        rank: number;
     }>, "many">;
 }, "strip", zod.ZodTypeAny, {
     isOpen: boolean;
     requireCode: boolean;
     entriesOpen: boolean;
+    huntEnabled: boolean;
+    huntName: string;
     sessionId: number;
     sessionName: string;
     pendingEntries: number;
+    hunters: {
+        nickname: string;
+        count: number;
+        minutes: number;
+        rank: number;
+    }[];
     totalVoters: number;
     codesTotal: number;
     codesUsed: number;
@@ -252,29 +290,37 @@ export declare const GetResultsResponse: zod.ZodObject<{
         id: number;
         name: string;
         imagePath: string;
+        rank: number;
         totalVotes: number;
         sumScores: number;
         avgScore: number;
         weightedScore: number;
-        rank: number;
     }[];
     allCostumes: {
         id: number;
         name: string;
         imagePath: string;
+        rank: number;
         totalVotes: number;
         sumScores: number;
         avgScore: number;
         weightedScore: number;
-        rank: number;
     }[];
 }, {
     isOpen: boolean;
     requireCode: boolean;
     entriesOpen: boolean;
+    huntEnabled: boolean;
+    huntName: string;
     sessionId: number;
     sessionName: string;
     pendingEntries: number;
+    hunters: {
+        nickname: string;
+        count: number;
+        minutes: number;
+        rank: number;
+    }[];
     totalVoters: number;
     codesTotal: number;
     codesUsed: number;
@@ -282,21 +328,21 @@ export declare const GetResultsResponse: zod.ZodObject<{
         id: number;
         name: string;
         imagePath: string;
+        rank: number;
         totalVotes: number;
         sumScores: number;
         avgScore: number;
         weightedScore: number;
-        rank: number;
     }[];
     allCostumes: {
         id: number;
         name: string;
         imagePath: string;
+        rank: number;
         totalVotes: number;
         sumScores: number;
         avgScore: number;
         weightedScore: number;
-        rank: number;
     }[];
 }>;
 /**
@@ -340,6 +386,8 @@ export declare const CloseSessionResponse: zod.ZodObject<{
     requireCode: zod.ZodBoolean;
     entriesOpen: zod.ZodBoolean;
     entriesAvailable: zod.ZodBoolean;
+    huntEnabled: zod.ZodBoolean;
+    huntName: zod.ZodString;
     createdAt: zod.ZodString;
 }, "strip", zod.ZodTypeAny, {
     id: number;
@@ -348,6 +396,8 @@ export declare const CloseSessionResponse: zod.ZodObject<{
     requireCode: boolean;
     entriesOpen: boolean;
     entriesAvailable: boolean;
+    huntEnabled: boolean;
+    huntName: string;
     createdAt: string;
 }, {
     id: number;
@@ -356,6 +406,8 @@ export declare const CloseSessionResponse: zod.ZodObject<{
     requireCode: boolean;
     entriesOpen: boolean;
     entriesAvailable: boolean;
+    huntEnabled: boolean;
+    huntName: string;
     createdAt: string;
 }>;
 /**
@@ -382,6 +434,8 @@ export declare const ReopenSessionResponse: zod.ZodObject<{
     requireCode: zod.ZodBoolean;
     entriesOpen: zod.ZodBoolean;
     entriesAvailable: zod.ZodBoolean;
+    huntEnabled: zod.ZodBoolean;
+    huntName: zod.ZodString;
     createdAt: zod.ZodString;
 }, "strip", zod.ZodTypeAny, {
     id: number;
@@ -390,6 +444,8 @@ export declare const ReopenSessionResponse: zod.ZodObject<{
     requireCode: boolean;
     entriesOpen: boolean;
     entriesAvailable: boolean;
+    huntEnabled: boolean;
+    huntName: string;
     createdAt: string;
 }, {
     id: number;
@@ -398,6 +454,8 @@ export declare const ReopenSessionResponse: zod.ZodObject<{
     requireCode: boolean;
     entriesOpen: boolean;
     entriesAvailable: boolean;
+    huntEnabled: boolean;
+    huntName: string;
     createdAt: string;
 }>;
 /**
@@ -420,12 +478,18 @@ export declare const UpdateSessionSettingsHeader: zod.ZodObject<{
 export declare const UpdateSessionSettingsBody: zod.ZodObject<{
     requireCode: zod.ZodOptional<zod.ZodBoolean>;
     entriesOpen: zod.ZodOptional<zod.ZodBoolean>;
+    huntEnabled: zod.ZodOptional<zod.ZodBoolean>;
+    huntName: zod.ZodOptional<zod.ZodString>;
 }, "strip", zod.ZodTypeAny, {
     requireCode?: boolean | undefined;
     entriesOpen?: boolean | undefined;
+    huntEnabled?: boolean | undefined;
+    huntName?: string | undefined;
 }, {
     requireCode?: boolean | undefined;
     entriesOpen?: boolean | undefined;
+    huntEnabled?: boolean | undefined;
+    huntName?: string | undefined;
 }>;
 export declare const UpdateSessionSettingsResponse: zod.ZodObject<{
     id: zod.ZodNumber;
@@ -434,6 +498,8 @@ export declare const UpdateSessionSettingsResponse: zod.ZodObject<{
     requireCode: zod.ZodBoolean;
     entriesOpen: zod.ZodBoolean;
     entriesAvailable: zod.ZodBoolean;
+    huntEnabled: zod.ZodBoolean;
+    huntName: zod.ZodString;
     createdAt: zod.ZodString;
 }, "strip", zod.ZodTypeAny, {
     id: number;
@@ -442,6 +508,8 @@ export declare const UpdateSessionSettingsResponse: zod.ZodObject<{
     requireCode: boolean;
     entriesOpen: boolean;
     entriesAvailable: boolean;
+    huntEnabled: boolean;
+    huntName: string;
     createdAt: string;
 }, {
     id: number;
@@ -450,6 +518,8 @@ export declare const UpdateSessionSettingsResponse: zod.ZodObject<{
     requireCode: boolean;
     entriesOpen: boolean;
     entriesAvailable: boolean;
+    huntEnabled: boolean;
+    huntName: string;
     createdAt: string;
 }>;
 /**
@@ -554,6 +624,7 @@ export declare const ListAdminCostumesResponseItem: zod.ZodObject<{
     displayOrder: zod.ZodNumber;
     status: zod.ZodEnum<["approved", "pending", "rejected"]>;
     submittedBy: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    huntCode: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
 }, "strip", zod.ZodTypeAny, {
     status: "approved" | "pending" | "rejected";
     id: number;
@@ -562,6 +633,7 @@ export declare const ListAdminCostumesResponseItem: zod.ZodObject<{
     imagePath: string;
     displayOrder: number;
     submittedBy?: string | null | undefined;
+    huntCode?: string | null | undefined;
 }, {
     status: "approved" | "pending" | "rejected";
     id: number;
@@ -570,6 +642,7 @@ export declare const ListAdminCostumesResponseItem: zod.ZodObject<{
     imagePath: string;
     displayOrder: number;
     submittedBy?: string | null | undefined;
+    huntCode?: string | null | undefined;
 }>;
 export declare const ListAdminCostumesResponse: zod.ZodArray<zod.ZodObject<{
     id: zod.ZodNumber;
@@ -579,6 +652,7 @@ export declare const ListAdminCostumesResponse: zod.ZodArray<zod.ZodObject<{
     displayOrder: zod.ZodNumber;
     status: zod.ZodEnum<["approved", "pending", "rejected"]>;
     submittedBy: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    huntCode: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
 }, "strip", zod.ZodTypeAny, {
     status: "approved" | "pending" | "rejected";
     id: number;
@@ -587,6 +661,7 @@ export declare const ListAdminCostumesResponse: zod.ZodArray<zod.ZodObject<{
     imagePath: string;
     displayOrder: number;
     submittedBy?: string | null | undefined;
+    huntCode?: string | null | undefined;
 }, {
     status: "approved" | "pending" | "rejected";
     id: number;
@@ -595,6 +670,7 @@ export declare const ListAdminCostumesResponse: zod.ZodArray<zod.ZodObject<{
     imagePath: string;
     displayOrder: number;
     submittedBy?: string | null | undefined;
+    huntCode?: string | null | undefined;
 }>, "many">;
 /**
  * @summary Add a costume to the active session
@@ -651,6 +727,7 @@ export declare const SetCostumeStatusResponse: zod.ZodObject<{
     displayOrder: zod.ZodNumber;
     status: zod.ZodEnum<["approved", "pending", "rejected"]>;
     submittedBy: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    huntCode: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
 }, "strip", zod.ZodTypeAny, {
     status: "approved" | "pending" | "rejected";
     id: number;
@@ -659,6 +736,7 @@ export declare const SetCostumeStatusResponse: zod.ZodObject<{
     imagePath: string;
     displayOrder: number;
     submittedBy?: string | null | undefined;
+    huntCode?: string | null | undefined;
 }, {
     status: "approved" | "pending" | "rejected";
     id: number;
@@ -667,6 +745,7 @@ export declare const SetCostumeStatusResponse: zod.ZodObject<{
     imagePath: string;
     displayOrder: number;
     submittedBy?: string | null | undefined;
+    huntCode?: string | null | undefined;
 }>;
 /**
  * @summary Edit a costume
@@ -706,6 +785,7 @@ export declare const UpdateCostumeResponse: zod.ZodObject<{
     displayOrder: zod.ZodNumber;
     status: zod.ZodEnum<["approved", "pending", "rejected"]>;
     submittedBy: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
+    huntCode: zod.ZodOptional<zod.ZodNullable<zod.ZodString>>;
 }, "strip", zod.ZodTypeAny, {
     status: "approved" | "pending" | "rejected";
     id: number;
@@ -714,6 +794,7 @@ export declare const UpdateCostumeResponse: zod.ZodObject<{
     imagePath: string;
     displayOrder: number;
     submittedBy?: string | null | undefined;
+    huntCode?: string | null | undefined;
 }, {
     status: "approved" | "pending" | "rejected";
     id: number;
@@ -722,6 +803,7 @@ export declare const UpdateCostumeResponse: zod.ZodObject<{
     imagePath: string;
     displayOrder: number;
     submittedBy?: string | null | undefined;
+    huntCode?: string | null | undefined;
 }>;
 /**
  * @summary Remove a costume

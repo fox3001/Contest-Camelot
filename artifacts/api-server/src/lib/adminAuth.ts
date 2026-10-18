@@ -15,11 +15,13 @@ const TOKEN_TTL_MS = 12 * 60 * 60 * 1000; // 12 ore
 const MAX_FAILED_ATTEMPTS = 8;
 const FAILED_WINDOW_MS = 10 * 60 * 1000; // 10 minuti
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD?.trim() || "";
+const ENV_PASSWORD = process.env.ADMIN_PASSWORD?.trim() || "";
+// Password in uso: quella cambiata dal pannello (salvata nel database) oppure quella di Render
+let currentPassword = ENV_PASSWORD;
 const SIGNING_SECRET = process.env.ADMIN_TOKEN?.trim() || randomBytes(32).toString("hex");
 
-if (!ADMIN_PASSWORD) {
-  logger.error("ADMIN_PASSWORD non impostata: il login admin è disabilitato finché non la configuri.");
+if (!ENV_PASSWORD) {
+  logger.warn("ADMIN_PASSWORD non impostata: serve una password salvata dal pannello per entrare.");
 }
 if (!process.env.ADMIN_TOKEN) {
   logger.warn("ADMIN_TOKEN non impostata: uso una chiave casuale, i login admin scadono a ogni riavvio.");
@@ -37,27 +39,42 @@ function sign(payload: string): string {
 }
 
 export function isLoginConfigured(): boolean {
-  return ADMIN_PASSWORD.length > 0;
+  return currentPassword.length > 0;
+}
+
+export function getCurrentPassword(): string {
+  return currentPassword;
+}
+
+/** Imposta la password in uso (chiamata all'avvio e dopo un cambio dal pannello). */
+export function useAdminPassword(password: string) {
+  currentPassword = password;
 }
 
 export function checkPassword(password: unknown): boolean {
-  if (!ADMIN_PASSWORD || typeof password !== "string") return false;
-  return safeEqual(password, ADMIN_PASSWORD);
+  if (!currentPassword || typeof password !== "string") return false;
+  return safeEqual(password, currentPassword);
+}
+
+// Il token porta un'impronta della password: cambiandola, i vecchi accessi scadono
+function passwordTag(): string {
+  return createHmac("sha256", SIGNING_SECRET).update("pw:" + currentPassword).digest("hex").slice(0, 12);
 }
 
 export function issueToken(): string {
   const exp = Date.now() + TOKEN_TTL_MS;
-  const payload = `admin.${exp}`;
+  const payload = `admin.${exp}.${passwordTag()}`;
   return `${payload}.${sign(payload)}`;
 }
 
 export function verifyToken(token: unknown): boolean {
   if (typeof token !== "string") return false;
   const parts = token.split(".");
-  if (parts.length !== 3 || parts[0] !== "admin") return false;
+  if (parts.length !== 4 || parts[0] !== "admin") return false;
   const exp = Number(parts[1]);
   if (!Number.isFinite(exp) || exp < Date.now()) return false;
-  return safeEqual(parts[2], sign(`${parts[0]}.${parts[1]}`));
+  if (parts[2] !== passwordTag()) return false;
+  return safeEqual(parts[3], sign(`${parts[0]}.${parts[1]}.${parts[2]}`));
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {

@@ -9,4 +9,6 @@
 export interface SessionSettingsInput {
   requireCode?: boolean;
   entriesOpen?: boolean;
+  huntEnabled?: boolean;
+  huntName?: string;
 }

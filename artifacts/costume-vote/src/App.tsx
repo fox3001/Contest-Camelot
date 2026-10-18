@@ -6,12 +6,15 @@ import NotFound from "@/pages/not-found";
 
 import Home from "./pages/home";
 import Vote from "./pages/vote";
+import Entra from "./pages/entra";
+import Caccia from "./pages/caccia";
 import Closed from "./pages/closed";
 import Iscriviti from "./pages/iscriviti";
 import AdminLogin from "./pages/admin/login";
 import AdminDashboard from "./pages/admin/dashboard";
 import AdminGestione from "./pages/admin/gestione";
 import AdminAspetto from "./pages/admin/aspetto";
+import AdminTarget from "./pages/admin/target";
 import { BackgroundPattern, ThemeProvider } from "@/lib/theme";
 
 const queryClient = new QueryClient({
@@ -27,7 +30,9 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/entra" component={Entra} />
       <Route path="/vote" component={Vote} />
+      <Route path="/caccia/:code" component={Caccia} />
       <Route path="/closed" component={Closed} />
       <Route path="/iscriviti" component={Iscriviti} />
       
@@ -35,6 +40,7 @@ function Router() {
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/gestione" component={AdminGestione} />
       <Route path="/admin/aspetto" component={AdminAspetto} />
+      <Route path="/admin/target" component={AdminTarget} />
       
       <Route component={NotFound} />
     </Switch>

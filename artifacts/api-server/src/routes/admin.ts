@@ -17,11 +17,17 @@ import {
   loginBlocked,
   recordFailedLogin,
   requireAdmin,
+  getCurrentPassword,
+  useAdminPassword,
+  issueToken as newToken,
 } from "../lib/adminAuth";
 import { getCurrentSession, serializeSession } from "../lib/sessions";
 import { rankCostumes } from "../lib/ranking";
-import { checkConnection, cloudinaryEnabled, cloudinaryParseError, destroyImage, signedUpload } from "../lib/cloudinary";
+import { checkConnection, cloudinaryEnabled, cloudinaryParseError, destroyImage, signedUpload, uploadPrivateText } from "../lib/cloudinary";
 import { sanitizeTheme } from "../lib/theme";
+import { ensureHuntCodes, huntLeaderboard, makeHuntCode } from "../lib/hunt";
+import { latestTargets } from "../lib/targets";
+import { targetsTable } from "@workspace/db";
 import { settingsTable } from "@workspace/db";
 
 const router = Router();
@@ -109,6 +115,9 @@ router.get("/results", async (req, res) => {
       requireCode: session.requireCode,
       entriesOpen: session.entriesOpen,
       pendingEntries,
+      huntEnabled: session.huntEnabled,
+      huntName: session.huntName,
+      hunters: (await huntLeaderboard(session.id)).slice(0, 20).map(({ nickname, count, minutes, rank }) => ({ nickname, count, minutes, rank })),
       totalVoters,
       codesTotal: codes?.total ?? 0,
       codesUsed: codes?.used ?? 0,
@@ -190,12 +199,14 @@ router.put("/sessions/:id/reopen", async (req, res) => {
 router.put("/sessions/:id/settings", async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { requireCode, entriesOpen } = (req.body ?? {}) as { requireCode?: unknown; entriesOpen?: unknown };
-    const patch: { requireCode?: boolean; entriesOpen?: boolean } = {};
+    const { requireCode, entriesOpen, huntEnabled, huntName } = (req.body ?? {}) as Record<string, unknown>;
+    const patch: { requireCode?: boolean; entriesOpen?: boolean; huntEnabled?: boolean; huntName?: string } = {};
     if (typeof requireCode === "boolean") patch.requireCode = requireCode;
     if (typeof entriesOpen === "boolean") patch.entriesOpen = entriesOpen;
+    if (typeof huntEnabled === "boolean") patch.huntEnabled = huntEnabled;
+    if (typeof huntName === "string" && huntName.trim()) patch.huntName = huntName.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 40);
     if (Object.keys(patch).length === 0) {
-      res.status(400).json({ error: "requireCode or entriesOpen must be boolean" });
+      res.status(400).json({ error: "nothing to update" });
       return;
     }
     const [session] = await db.update(sessionsTable).set(patch).where(eq(sessionsTable.id, id)).returning();
@@ -203,6 +214,7 @@ router.put("/sessions/:id/settings", async (req, res) => {
       res.status(404).json({ error: "Session not found" });
       return;
     }
+    if (session.huntEnabled) await ensureHuntCodes(session.id);
     res.json(serializeSession(session));
   } catch (err) {
     req.log.error({ err }, "Failed to update session settings");
@@ -221,6 +233,7 @@ router.get("/costumes", async (req, res) => {
       res.json([]);
       return;
     }
+    await ensureHuntCodes(session.id);
     const costumes = await db
       .select()
       .from(costumesTable)
@@ -262,7 +275,7 @@ router.post("/costumes", async (req, res) => {
     }
     const [costume] = await db
       .insert(costumesTable)
-      .values({ sessionId: session.id, name, imagePath, displayOrder })
+      .values({ sessionId: session.id, name, imagePath, displayOrder, huntCode: makeHuntCode() })
       .returning();
     res.status(201).json(costume);
   } catch (err) {
@@ -461,6 +474,113 @@ router.put("/theme", async (req, res) => {
     res.json({ theme: sanitizeTheme(row.value), updatedAt: row.updatedAt.toISOString() });
   } catch (err) {
     req.log.error({ err }, "Failed to save theme");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Target Hunt
+// ---------------------------------------------------------------------------
+
+router.get("/targets", async (req, res) => {
+  try {
+    const session = await getCurrentSession();
+    if (!session) {
+      res.json([]);
+      return;
+    }
+    const rows = await latestTargets(session.id, 50);
+    res.json(rows.map((t) => ({ ...t, createdAt: t.createdAt.toISOString(), wonAt: t.wonAt?.toISOString() ?? null })));
+  } catch (err) {
+    req.log.error({ err }, "Failed to list targets");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/targets", async (req, res) => {
+  try {
+    const session = await getCurrentSession();
+    if (!session) {
+      res.status(404).json({ error: "No session found" });
+      return;
+    }
+    const b = (req.body ?? {}) as Record<string, unknown>;
+    const clean = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/[\u0000-\u0009\u000b-\u001f]/g, " ").trim().slice(0, max) : "");
+    const costumeId = Number(b.costumeId);
+    const riddle = clean(b.riddle, 400);
+    const prize = clean(b.prize, 80);
+    const title = clean(b.title, 40) || "Target Hunt";
+    if (!Number.isInteger(costumeId) || !riddle || !prize) {
+      res.status(400).json({ error: "Servono costume, indovinello e premio" });
+      return;
+    }
+    const [costume] = await db
+      .select()
+      .from(costumesTable)
+      .where(and(eq(costumesTable.id, costumeId), eq(costumesTable.sessionId, session.id), eq(costumesTable.status, "approved")))
+      .limit(1);
+    if (!costume) {
+      res.status(400).json({ error: "Costume non in gara" });
+      return;
+    }
+    await ensureHuntCodes(session.id);
+    const target = await db.transaction(async (tx) => {
+      // Un solo target attivo alla volta: quello precedente viene annullato
+      await tx
+        .update(targetsTable)
+        .set({ status: "cancelled" })
+        .where(and(eq(targetsTable.sessionId, session.id), eq(targetsTable.status, "active")));
+      const [t] = await tx.insert(targetsTable).values({ sessionId: session.id, costumeId, riddle, prize, title }).returning();
+      return t;
+    });
+    res.status(201).json({ id: target.id });
+  } catch (err) {
+    req.log.error({ err }, "Failed to create target");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/targets/:id/cancel", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    await db.update(targetsTable).set({ status: "cancelled" }).where(and(eq(targetsTable.id, id), eq(targetsTable.status, "active")));
+    res.status(204).end();
+  } catch (err) {
+    req.log.error({ err }, "Failed to cancel target");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Password admin
+// ---------------------------------------------------------------------------
+
+router.get("/password", (_req, res) => {
+  res.json({ password: getCurrentPassword() });
+});
+
+router.put("/password", async (req, res) => {
+  try {
+    const next = typeof req.body?.password === "string" ? req.body.password.trim() : "";
+    if (next.length < 4 || next.length > 100) {
+      res.status(400).json({ error: "La password deve avere da 4 a 100 caratteri" });
+      return;
+    }
+    await db
+      .insert(settingsTable)
+      .values({ key: "admin_password", value: { password: next } })
+      .onConflictDoUpdate({ target: settingsTable.key, set: { value: { password: next }, updatedAt: new Date() } });
+    useAdminPassword(next);
+    // Copia di recupero privata su Cloudinary (si aggiorna a ogni cambio)
+    const when = new Date().toLocaleString("it-IT", { timeZone: "Europe/Rome" });
+    const backup = await uploadPrivateText(
+      "password-admin.txt",
+      `Password del pannello admin di Contest Camelot\n\n${next}\n\nAggiornata il ${when}\n`,
+    );
+    // Gli altri accessi scadono; chi l'ha cambiata riceve un nuovo accesso valido
+    res.json({ ok: true, backup, token: newToken() });
+  } catch (err) {
+    req.log.error({ err }, "Failed to change admin password");
     res.status(500).json({ error: "Internal server error" });
   }
 });

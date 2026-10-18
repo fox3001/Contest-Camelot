@@ -88,6 +88,40 @@ export declare const sessionsTable: import("drizzle-orm/pg-core").PgTableWithCol
             identity: undefined;
             generated: undefined;
         }, {}, {}>;
+        huntEnabled: import("drizzle-orm/pg-core").PgColumn<{
+            name: "hunt_enabled";
+            tableName: "sessions";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        huntName: import("drizzle-orm/pg-core").PgColumn<{
+            name: "hunt_name";
+            tableName: "sessions";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "sessions";
@@ -113,6 +147,8 @@ export declare const insertSessionSchema: z.ZodObject<{
     isOpen: z.ZodOptional<z.ZodBoolean>;
     requireCode: z.ZodOptional<z.ZodBoolean>;
     entriesOpen: z.ZodOptional<z.ZodBoolean>;
+    huntEnabled: z.ZodOptional<z.ZodBoolean>;
+    huntName: z.ZodOptional<z.ZodString>;
 }, {
     out: {};
     in: {};

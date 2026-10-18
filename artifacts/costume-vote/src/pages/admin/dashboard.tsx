@@ -325,6 +325,34 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            <button
+              onClick={() => setLocation("/admin/target")}
+              className="w-full flex items-center justify-between bg-card border border-primary/40 rounded-xl px-4 py-3 text-sm text-foreground hover:border-primary transition"
+            >
+              <span>🎯 Target Hunt: indovinello a tutti, vince il primo che trova il costume</span>
+              <span className="text-primary font-medium shrink-0 ml-2">Apri →</span>
+            </button>
+
+            {results.huntEnabled && (
+              <div className="bg-card border border-border rounded-xl p-4">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">🎯 {results.huntName}</p>
+                {results.hunters.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Ancora nessuna cattura.</p>
+                ) : (
+                  <ol className="space-y-1">
+                    {results.hunters.slice(0, 5).map((h) => (
+                      <li key={h.rank} className="flex items-center gap-3 text-sm">
+                        <span className="w-5 text-center text-muted-foreground">{h.rank}</span>
+                        <span className="flex-1 truncate text-foreground">{h.nickname}</span>
+                        <span className="text-primary font-medium">{h.count} catture</span>
+                        <span className="text-xs text-muted-foreground">{h.minutes} min</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+            )}
+
             {results.pendingEntries > 0 && (
               <button
                 onClick={() => setLocation("/admin/gestione")}

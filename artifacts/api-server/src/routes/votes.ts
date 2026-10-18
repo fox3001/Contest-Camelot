@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, votesTable, votersTable, sessionsTable, costumesTable } from "@workspace/db";
+import { db, votesTable, votersTable, sessionsTable, costumesTable, huntCatchesTable } from "@workspace/db";
 import { eq, and, inArray, sql } from "drizzle-orm";
 
 const router = Router();
@@ -82,6 +82,30 @@ router.post("/", async (req, res) => {
     if (valid.length !== ids.length) {
       res.status(400).json({ error: "Costume not in this session" });
       return;
+    }
+
+    // Modalità caccia: si votano solo i costumi catturati (QR scansionato)
+    if (session.huntEnabled) {
+      const caught = await db
+        .select({ id: huntCatchesTable.costumeId })
+        .from(huntCatchesTable)
+        .where(and(eq(huntCatchesTable.voterId, voter.id), inArray(huntCatchesTable.costumeId, ids)));
+      if (caught.length !== ids.length) {
+        res.status(403).json({ error: "not_caught", message: "Prima devi scansionare il QR di questo costume" });
+        return;
+      }
+    }
+
+    // Non si vota il proprio costume (iscritto dallo stesso telefono)
+    if (voter.deviceId) {
+      const own = await db
+        .select({ id: costumesTable.id })
+        .from(costumesTable)
+        .where(and(eq(costumesTable.deviceId, voter.deviceId), inArray(costumesTable.id, ids)));
+      if (own.length > 0) {
+        res.status(403).json({ error: "own_costume", message: "Non puoi votare il tuo costume" });
+        return;
+      }
     }
 
     await db

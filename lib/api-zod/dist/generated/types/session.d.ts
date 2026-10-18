@@ -12,6 +12,8 @@ export interface Session {
     requireCode: boolean;
     entriesOpen: boolean;
     entriesAvailable: boolean;
+    huntEnabled: boolean;
+    huntName: string;
     createdAt: string;
 }
 //# sourceMappingURL=session.d.ts.map
