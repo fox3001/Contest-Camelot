@@ -97,6 +97,7 @@ export type Theme = {
   titleFont?: string;
   bodyFont?: string;
   logo?: { url?: string | null; size?: number };
+  winImage?: { url?: string | null };
   background?: {
     imageUrl?: string | null;
     mode?: string;
@@ -132,6 +133,10 @@ export function sanitizeTheme(input: any): Theme {
       const size = num(input.logo.size, 30, 100);
       if (size !== undefined) logo.size = size;
       if (Object.keys(logo).length) out.logo = logo;
+    }
+    if (input.winImage && typeof input.winImage === "object") {
+      const url = cleanUrl(input.winImage.url);
+      if (url !== undefined) out.winImage = { url };
     }
     if (input.background && typeof input.background === "object") {
       const b = input.background;

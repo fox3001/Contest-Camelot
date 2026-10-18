@@ -110,6 +110,10 @@ const HELP: Record<string, Help> = {
           </>
         ),
       },
+      {
+        icon: "📸",
+        text: "La fotocamera non legge il QR? Nello scanner tocca “Scatta una foto del QR”, oppure scrivi il codice di 5 lettere che c'è sotto.",
+      },
     ],
     tip: "Il tuo costume non puoi votarlo: ci pensano gli altri!",
   },
@@ -379,7 +383,11 @@ const HELP: Record<string, Help> = {
       },
       {
         icon: "🏆",
-        text: "Vince il primo che scansiona il QR di quel costume. Qui vedi chi ha vinto e il suo codice premio: controllalo quando viene a ritirare.",
+        text: "Vince il primo che scansiona il QR di quel costume: sul suo telefono compare la coppa (o la tua immagine) con il codice premio. Qui vedi chi ha vinto e il codice: controllalo quando viene a ritirare.",
+      },
+      {
+        icon: "🤫",
+        text: "Gli altri ospiti vedono solo “Caccia chiusa”, senza il nome del vincitore.",
       },
     ],
     tip: "Il pulsante resta grigio finché non hai scelto costume, indovinello e premio.",

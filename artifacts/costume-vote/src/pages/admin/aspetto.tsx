@@ -949,6 +949,19 @@ export default function AdminAspetto() {
           )}
         </Section>
 
+        <Section title="Premio della Target Hunt" subtitle="Immagine che vede chi vince">
+          <p className="text-xs text-muted-foreground">
+            Chi vince la Target Hunt vede questa immagine con il codice del premio e la mostra a voi per ritirarlo. Senza immagine compare una coppa 🏆.
+          </p>
+          <ImagePicker
+            label="Immagine della vittoria"
+            value={draft.winImage.url}
+            defaultValue={DEFAULT_THEME.winImage.url}
+            defaultLabel="Coppa 🏆"
+            onChange={(v) => set("winImage", { url: v })}
+          />
+        </Section>
+
         <Section title="Logo" subtitle="Immagine in cima alla home">
           <ImagePicker
             label="Logo"
@@ -993,7 +1006,7 @@ export default function AdminAspetto() {
         >
           <p className="text-xs text-muted-foreground">
             Lascia vuoto per usare il testo originale. Le parole tra graffe,
-            come {"{nome}"} o {"{vincitore}"}, vengono sostituite in automatico.
+            come {"{nome}"}, vengono sostituite in automatico.
           </p>
           {Object.entries(groups).map(([page, fields]) => (
             <div key={page} className="space-y-3">

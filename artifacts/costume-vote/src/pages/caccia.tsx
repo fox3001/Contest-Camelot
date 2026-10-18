@@ -5,6 +5,7 @@ import { getStoredVoter } from "@/lib/storage";
 import { CATCH_ERRORS, catchCostume, setPendingCode, type CatchResult } from "@/lib/hunt";
 import { optimizedImage } from "@/lib/images";
 import { useTheme } from "@/lib/theme";
+import { WinImage } from "@/components/WinImage";
 
 /**
  * Pagina aperta dal QR di un costume (fotocamera del telefono o scanner dell'app).
@@ -44,7 +45,7 @@ export default function Caccia() {
             <img src={optimizedImage(result.imagePath, 500)} alt={result.name} className="w-full aspect-[4/5] object-cover rounded-xl mb-4 bg-muted" />
             {result.targetWin && (
               <div className="mb-4 rounded-xl bg-primary text-primary-foreground p-4">
-                <p className="text-3xl" aria-hidden="true">🏆</p>
+                <WinImage small />
                 <p className="font-serif text-xl">{tx.winTitle}</p>
                 <p className="text-xs opacity-80">{result.targetWin.title}</p>
                 <p className="text-sm mt-1">{result.targetWin.prize}</p>

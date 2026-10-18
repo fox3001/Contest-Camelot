@@ -64,3 +64,6 @@ _Populate as you build._
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- **Sito sempre sveglio**: su Render il server visita il proprio indirizzo pubblico (`RENDER_EXTERNAL_URL`, impostato da Render) ogni 10 minuti, così il piano gratuito non lo addormenta (`artifacts/api-server/src/lib/keepAwake.ts`). Si disattiva con la variabile `KEEP_AWAKE=0`.
+- **Scanner QR**: fotocamera dal vivo; se non parte (iPhone senza permesso, browser dentro altre app) "Scatta una foto del QR" legge il codice da una foto; resta il codice di 5 caratteri da scrivere a mano.
+- **Fine della Target Hunt**: il vincitore vede l'immagine della vittoria (Aspetto → Premio della Target Hunt, chiave `winImage` del tema; senza immagine una coppa) con il codice premio; gli altri vedono solo "Caccia chiusa" (il nome del vincitore non viene inviato ai votanti).
