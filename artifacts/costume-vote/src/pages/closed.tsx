@@ -2,9 +2,12 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { useGetActiveSession, getGetActiveSessionQueryKey } from "@workspace/api-client-react";
+import { useTheme } from "@/lib/theme";
+import { OrganizerLink } from "@/components/OrganizerLink";
 
 export default function Closed() {
   const [, setLocation] = useLocation();
+  const { theme } = useTheme();
   const { data: session } = useGetActiveSession({ query: { queryKey: getGetActiveSessionQueryKey(), refetchInterval: 4000 } });
 
   useEffect(() => {
@@ -48,7 +51,7 @@ export default function Closed() {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="text-3xl font-serif text-primary mb-3"
         >
-          Votazioni Chiuse
+          {theme.texts.closedTitle}
         </motion.h1>
 
         <motion.p
@@ -57,7 +60,7 @@ export default function Closed() {
           transition={{ duration: 0.6, delay: 0.5 }}
           className="text-lg text-foreground/80 leading-relaxed mb-6"
         >
-          Le votazioni sono terminate.
+          {theme.texts.closedSubtitle}
         </motion.p>
 
         <motion.div
@@ -66,9 +69,7 @@ export default function Closed() {
           transition={{ duration: 0.6, delay: 0.7 }}
           className="bg-card border border-border rounded-2xl p-6"
         >
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            Attendi gli annunci dell'araldo: il vincitore del concorso di costumi verrà rivelato a breve.
-          </p>
+          <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-line">{theme.texts.closedText}</p>
         </motion.div>
 
         {session?.entriesOpen && (
@@ -79,6 +80,8 @@ export default function Closed() {
             Iscrivi il tuo costume
           </button>
         )}
+
+        <OrganizerLink />
 
         <motion.div
           initial={{ opacity: 0 }}

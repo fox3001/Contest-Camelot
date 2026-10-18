@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useGetActiveSession, getGetActiveSessionQueryKey, useRegisterVoter } from "@workspace/api-client-react";
-import logo from "@assets/logo_ballo_dark_glow_1782294241374-jfuYTOf4.png";
 import { getDeviceId, getLastNickname, getStoredVoter, setStoredVoter } from "@/lib/storage";
+import { useTheme } from "@/lib/theme";
+import { OrganizerLink } from "@/components/OrganizerLink";
 
 const ERROR_MESSAGES: Record<string, string> = {
   nickname_taken: "Nickname già in uso, scegline un altro.",
@@ -15,6 +16,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 function EntryLink({ onClick }: { onClick: () => void }) {
+  const { theme } = useTheme();
   return (
     <button
       onClick={onClick}
@@ -24,22 +26,24 @@ function EntryLink({ onClick }: { onClick: () => void }) {
         <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
       </svg>
-      Sei in costume? Iscriviti al contest
+      {theme.texts.entryButton}
     </button>
   );
 }
 
 function WaitingScreen({ entriesOpen, onEntry }: { entriesOpen: boolean; onEntry: () => void }) {
+  const { theme, logoSrc } = useTheme();
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center px-6 text-center">
-      <img src={logo} alt="Camelot's Tales" className="w-48 h-48 object-contain mb-6" />
-      <h1 className="text-xl font-serif text-primary mb-3">Le votazioni non sono ancora iniziate</h1>
-      <p className="text-muted-foreground text-sm">Tieni aperta questa pagina: si aggiornerà da sola appena si apre il voto.</p>
+      <img src={logoSrc} alt={theme.texts.appTitle} className="w-48 h-48 object-contain mb-6" />
+      <h1 className="text-xl font-serif text-primary mb-3">{theme.texts.waitingTitle}</h1>
+      <p className="text-muted-foreground text-sm">{theme.texts.waitingText}</p>
       {entriesOpen && (
         <div className="w-full max-w-xs">
           <EntryLink onClick={onEntry} />
         </div>
       )}
+      <OrganizerLink />
     </div>
   );
 }
@@ -49,6 +53,7 @@ export default function Home() {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [, setLocation] = useLocation();
+  const { theme, logoSrc } = useTheme();
 
   const { data: session, isLoading: sessionLoading } = useGetActiveSession({
     query: { queryKey: getGetActiveSessionQueryKey(), refetchInterval: 4000, retry: false },
@@ -146,11 +151,21 @@ export default function Home() {
           className="flex justify-center mb-3"
         >
           <img
-            src={logo}
-            alt="Camelot's Tales – A Fantasy Ball Night"
-            className="w-[88vw] max-w-sm h-auto object-contain drop-shadow-[0_0_32px_rgba(180,210,255,0.4)]"
+            src={logoSrc}
+            alt={theme.texts.appTitle}
+            style={{ width: `${theme.logo.size}vw`, maxWidth: `${Math.round((384 * theme.logo.size) / 88)}px` }}
+            className="h-auto object-contain drop-shadow-[0_0_32px_rgba(180,210,255,0.4)]"
           />
         </motion.div>
+
+        {(theme.texts.homeTitle || theme.texts.homeSubtitle) && (
+          <div className="text-center mb-5 -mt-1">
+            {theme.texts.homeTitle && <h1 className="text-2xl font-serif text-primary leading-tight">{theme.texts.homeTitle}</h1>}
+            {theme.texts.homeSubtitle && (
+              <p className="text-sm text-muted-foreground mt-2 leading-relaxed whitespace-pre-line">{theme.texts.homeSubtitle}</p>
+            )}
+          </div>
+        )}
 
         {alreadyRegistered ? (
           <motion.div
@@ -177,7 +192,7 @@ export default function Home() {
             className="bg-card border border-border rounded-2xl p-5 shadow-md"
           >
             <label className="block text-sm font-medium text-foreground mb-2" htmlFor="nickname">
-              Il tuo nickname
+              {theme.texts.nicknameLabel}
             </label>
             <input
               id="nickname"
@@ -231,7 +246,7 @@ export default function Home() {
               disabled={isPending || !nickname.trim()}
               className="mt-4 w-full bg-primary text-primary-foreground font-semibold rounded-xl py-4 text-base hover:opacity-90 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow"
             >
-              {isPending ? "Connessione..." : "Entra e Vota"}
+              {isPending ? "Connessione..." : theme.texts.enterButton}
             </button>
           </motion.form>
         )}
@@ -246,6 +261,8 @@ export default function Home() {
         </motion.p>
 
         {session.entriesOpen && <EntryLink onClick={() => setLocation("/iscriviti")} />}
+
+        <OrganizerLink />
       </motion.div>
     </div>
   );

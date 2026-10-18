@@ -260,6 +260,12 @@ export default function AdminDashboard() {
               Gestisci
             </button>
             <button
+              onClick={() => setLocation("/admin/aspetto")}
+              className="text-xs bg-muted text-foreground px-3 py-1.5 rounded-lg hover:opacity-80 transition"
+            >
+              Aspetto
+            </button>
+            <button
               onClick={() => {
                 clearAdminToken();
                 setLocation("/admin");

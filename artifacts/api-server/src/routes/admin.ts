@@ -20,7 +20,9 @@ import {
 } from "../lib/adminAuth";
 import { getCurrentSession, serializeSession } from "../lib/sessions";
 import { rankCostumes } from "../lib/ranking";
-import { destroyImage } from "../lib/cloudinary";
+import { checkConnection, cloudinaryEnabled, cloudinaryParseError, destroyImage, signedUpload } from "../lib/cloudinary";
+import { sanitizeTheme } from "../lib/theme";
+import { settingsTable } from "@workspace/db";
 
 const router = Router();
 
@@ -133,7 +135,11 @@ router.post("/sessions", async (req, res) => {
     }
     const session = await db.transaction(async (tx) => {
       await tx.update(sessionsTable).set({ isOpen: false });
-      const [created] = await tx.insert(sessionsTable).values({ name: clean, isOpen: true }).returning();
+      // Le iscrizioni con foto partono aperte se Cloudinary è configurato
+      const [created] = await tx
+        .insert(sessionsTable)
+        .values({ name: clean, isOpen: true, entriesOpen: cloudinaryEnabled() })
+        .returning();
       return created;
     });
     res.status(201).json(serializeSession(session));
@@ -436,6 +442,48 @@ router.delete("/codes/unused", async (req, res) => {
     res.status(204).end();
   } catch (err) {
     req.log.error({ err }, "Failed to delete unused codes");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Aspetto grafico
+// ---------------------------------------------------------------------------
+
+router.put("/theme", async (req, res) => {
+  try {
+    const theme = sanitizeTheme((req.body ?? {}).theme);
+    const [row] = await db
+      .insert(settingsTable)
+      .values({ key: "theme", value: theme })
+      .onConflictDoUpdate({ target: settingsTable.key, set: { value: theme, updatedAt: new Date() } })
+      .returning();
+    res.json({ theme: sanitizeTheme(row.value), updatedAt: row.updatedAt.toISOString() });
+  } catch (err) {
+    req.log.error({ err }, "Failed to save theme");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Diagnostica: la chiave Cloudinary è giusta?
+router.get("/cloudinary/check", async (_req, res) => {
+  if (cloudinaryParseError) {
+    res.json({ ok: false, problem: "format" });
+    return;
+  }
+  res.json(await checkConnection());
+});
+
+// Firma per caricare logo e sfondi su Cloudinary
+router.post("/uploads/sign", async (req, res) => {
+  if (!cloudinaryEnabled()) {
+    res.status(503).json({ error: "cloudinary_unavailable" });
+    return;
+  }
+  try {
+    res.json(signedUpload("contest-camelot/aspetto"));
+  } catch (err) {
+    req.log.error({ err }, "Failed to sign admin upload");
     res.status(500).json({ error: "Internal server error" });
   }
 });

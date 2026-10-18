@@ -46,6 +46,7 @@ App di votazione per concorso costumi: i partecipanti entrano via QR code, scelg
 
 - **Votanti**: nickname (+ codice se richiesto) → vota 1-5 ogni costume, con ricerca → grazie. Se votazioni chiuse → schermata "attendi l'araldo"
 - **Partecipanti in costume**: "Iscriviti al contest" → foto + nome → in attesa → approvato/rifiutato (possono ricaricare finché non è approvato)
+- **Aspetto** (`/admin/aspetto`): colori, sfondo a motivo (immagine, dimensione, intensità, movimento, velocità, direzione), logo, carattere dei titoli e tutti i testi per i votanti, con anteprima dal vivo. Salvato nella tabella `app_settings` (chiave `theme`, solo le differenze dai valori di partenza in `src/lib/theme.tsx`); letto da `GET /api/theme`
 - **Admin**: login con password → dashboard live (top 5, media, n.voti, punteggio) → chiudi/riapri votazioni → gestisci costumi (aggiungi, modifica, elimina con conferma) e codici votante (genera, stampa, CSV)
 
 ## User preferences

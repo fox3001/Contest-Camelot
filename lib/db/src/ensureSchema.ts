@@ -51,6 +51,11 @@ const STATEMENTS: string[] = [
      created_at timestamp NOT NULL DEFAULT now(),
      CONSTRAINT voter_codes_session_code_unique UNIQUE (session_id, code)
    )`,
+  `CREATE TABLE IF NOT EXISTS app_settings (
+     key text PRIMARY KEY,
+     value jsonb NOT NULL,
+     updated_at timestamp NOT NULL DEFAULT now()
+   )`,
 ];
 
 // Indici "di sicurezza": se i dati esistenti li violano non blocchiamo l'avvio.
