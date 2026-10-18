@@ -99,7 +99,7 @@ export const TEXT_FIELDS = [
   { key: "targetScanButton", label: "Annuncio: pulsante per scansionare", max: 40, page: "Target Hunt" },
   { key: "targetLater", label: "Annuncio: pulsante per chiudere", max: 30, page: "Target Hunt" },
   { key: "targetWrong", label: "Costume sbagliato ({nome})", max: 160, page: "Target Hunt" },
-  { key: "targetFoundBy", label: "Target trovato da altri ({vincitore})", max: 160, page: "Target Hunt" },
+  { key: "targetFoundBy", label: "Caccia chiusa (per chi non ha vinto)", max: 160, page: "Target Hunt" },
   { key: "winTitle", label: "Vittoria: titolo", max: 40, page: "Target Hunt" },
   { key: "winText", label: "Vittoria: istruzioni prima del codice", max: 160, page: "Target Hunt", multiline: true },
 
@@ -117,6 +117,8 @@ export type Theme = {
   titleFont: string;
   bodyFont: string;
   logo: { url: string | null; size: number };
+  /** Immagine per chi vince la Target Hunt (vuota = coppa) */
+  winImage: { url: string | null };
   background: {
     imageUrl: string | null;
     /** "tile" = motivo ripetuto, "cover" = immagine intera a tutto schermo */
@@ -136,6 +138,7 @@ export const DEFAULT_THEME: Theme = {
   titleFont: "Playfair Display",
   bodyFont: "DM Sans",
   logo: { url: null, size: 88 },
+  winImage: { url: null },
   background: { imageUrl: "/pattern%201.2.jpg", mode: "tile", size: 327, opacity: 0.07, animate: true, speed: 16, direction: "giu-sinistra" },
   texts: {
     appTitle: "Camelot's Tales – Vota i costumi",
@@ -175,7 +178,7 @@ export const DEFAULT_THEME: Theme = {
     targetScanButton: "L'ho trovato: scansiona",
     targetLater: "Vado a cercarlo",
     targetWrong: "Hai catturato {nome}… ma non è il target. Rileggi l'indovinello!",
-    targetFoundBy: "Il target è stato trovato da {vincitore}. Resta pronto per il prossimo!",
+    targetFoundBy: "Caccia chiusa! Resta pronto per la prossima.",
     winTitle: "Hai vinto!",
     winText: "Mostra questo schermo all'organizzazione. Codice premio:",
     closedTitle: "Votazioni Chiuse",
@@ -246,7 +249,7 @@ export const THEME_PRESETS: { name: string; theme: any }[] = [
   },
 ];
 
-/** Sostituisce {nome}, {vincitore}… nei testi. */
+/** Sostituisce {nome}… nei testi. */
 export function fill(text: string, vars: Record<string, string | number>) {
   return text.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
 }
@@ -259,6 +262,7 @@ export function mergeTheme(saved: any): Theme {
     titleFont: s.titleFont ?? DEFAULT_THEME.titleFont,
     bodyFont: s.bodyFont ?? DEFAULT_THEME.bodyFont,
     logo: { ...DEFAULT_THEME.logo, ...(s.logo ?? {}) },
+    winImage: { ...DEFAULT_THEME.winImage, ...(s.winImage ?? {}) },
     background: { ...DEFAULT_THEME.background, ...(s.background ?? {}) },
     texts: { ...DEFAULT_THEME.texts, ...Object.fromEntries(Object.entries(s.texts ?? {}).filter(([, v]) => !!v)) } as Theme["texts"],
   };
@@ -273,6 +277,7 @@ export function diffTheme(t: Theme) {
   if (t.bodyFont !== DEFAULT_THEME.bodyFont) out.bodyFont = t.bodyFont;
   const logo = Object.fromEntries(Object.entries(t.logo).filter(([k, v]) => v !== (DEFAULT_THEME.logo as any)[k]));
   if (Object.keys(logo).length) out.logo = logo;
+  if (t.winImage.url !== DEFAULT_THEME.winImage.url) out.winImage = { url: t.winImage.url };
   const bg = Object.fromEntries(Object.entries(t.background).filter(([k, v]) => v !== (DEFAULT_THEME.background as any)[k]));
   if (Object.keys(bg).length) out.background = bg;
   const texts = Object.fromEntries(Object.entries(t.texts).filter(([k, v]) => v.trim() !== (DEFAULT_THEME.texts as any)[k]));

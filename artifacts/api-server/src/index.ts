@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { useAdminPassword } from "./lib/adminAuth";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startKeepAwake } from "./lib/keepAwake";
 
 const port = Number(process.env["PORT"] ?? 8080);
 
@@ -25,6 +26,7 @@ async function main() {
 
   const server = app.listen(port, "0.0.0.0", () => {
     logger.info({ port }, "Server listening");
+    startKeepAwake();
   });
 
   server.on("error", (err) => {

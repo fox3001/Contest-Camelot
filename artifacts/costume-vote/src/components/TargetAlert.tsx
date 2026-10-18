@@ -5,6 +5,7 @@ import { getStoredVoter } from "@/lib/storage";
 import { CATCH_ERRORS, catchCostume, type TargetWin } from "@/lib/hunt";
 import { QrScanner } from "@/components/QrScanner";
 import { fill, useTheme } from "@/lib/theme";
+import { WinImage } from "@/components/WinImage";
 
 type Target = {
   id: number;
@@ -15,7 +16,6 @@ type Target = {
   status: "active" | "won";
   createdAt: string;
   wonAt: string | null;
-  winnerNickname: string | null;
   iWon: boolean;
   claimCode: string | null;
 };
@@ -165,9 +165,8 @@ export function TargetAlert() {
           ) : (
             <p className="text-sm text-foreground">
               🏆 {target!.title}:{" "}
-              {fill(tx.targetFoundBy, {
-                vincitore: target!.winnerNickname ?? "—",
-              })}
+              {/* il nome del vincitore lo vedono solo l'admin e chi ha vinto */}
+              {fill(tx.targetFoundBy, { vincitore: "un cacciatore" })}
             </p>
           )}
           {notice && (
@@ -249,9 +248,7 @@ export function TargetAlert() {
                   animate={{ scale: 1, rotate: 0 }}
                   className="w-full max-w-sm text-center text-primary-foreground"
                 >
-                  <p className="text-7xl" aria-hidden="true">
-                    🏆
-                  </p>
+                  <WinImage />
                   <p className="text-sm uppercase tracking-[0.3em] mt-3 font-semibold">
                     {win.title}
                   </p>

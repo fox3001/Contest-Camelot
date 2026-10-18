@@ -115,7 +115,6 @@ router.get("/target", async (req, res) => {
         status: t.status,
         createdAt: t.createdAt.toISOString(),
         wonAt: t.wonAt?.toISOString() ?? null,
-        winnerNickname: t.status === "won" ? t.winnerNickname : null,
         iWon,
         claimCode: iWon ? t.claimCode : null,
       },
