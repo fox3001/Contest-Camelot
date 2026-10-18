@@ -14,6 +14,7 @@ export * from './costumeStatus';
 export * from './costumeStatusInput';
 export * from './costumeStatusInputStatus';
 export * from './healthStatus';
+export * from './hunter';
 export * from './resultsSummary';
 export * from './session';
 export * from './sessionInput';

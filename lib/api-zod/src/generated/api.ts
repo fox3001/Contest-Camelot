@@ -26,6 +26,8 @@ export const GetActiveSessionResponse = zod.object({
   "requireCode": zod.boolean(),
   "entriesOpen": zod.boolean(),
   "entriesAvailable": zod.boolean(),
+  "huntEnabled": zod.boolean(),
+  "huntName": zod.string(),
   "createdAt": zod.string()
 })
 
@@ -51,7 +53,8 @@ export const ListCostumesResponseItem = zod.object({
   "imagePath": zod.string(),
   "displayOrder": zod.number(),
   "status": zod.enum(['approved', 'pending', 'rejected']),
-  "submittedBy": zod.string().nullish()
+  "submittedBy": zod.string().nullish(),
+  "huntCode": zod.string().nullish()
 })
 export const ListCostumesResponse = zod.array(ListCostumesResponseItem)
 
@@ -98,6 +101,14 @@ export const GetResultsResponse = zod.object({
   "requireCode": zod.boolean(),
   "entriesOpen": zod.boolean(),
   "pendingEntries": zod.number(),
+  "huntEnabled": zod.boolean(),
+  "huntName": zod.string(),
+  "hunters": zod.array(zod.object({
+  "nickname": zod.string(),
+  "count": zod.number(),
+  "minutes": zod.number(),
+  "rank": zod.number()
+})),
   "totalVoters": zod.number(),
   "codesTotal": zod.number(),
   "codesUsed": zod.number(),
@@ -154,6 +165,8 @@ export const CloseSessionResponse = zod.object({
   "requireCode": zod.boolean(),
   "entriesOpen": zod.boolean(),
   "entriesAvailable": zod.boolean(),
+  "huntEnabled": zod.boolean(),
+  "huntName": zod.string(),
   "createdAt": zod.string()
 })
 
@@ -176,6 +189,8 @@ export const ReopenSessionResponse = zod.object({
   "requireCode": zod.boolean(),
   "entriesOpen": zod.boolean(),
   "entriesAvailable": zod.boolean(),
+  "huntEnabled": zod.boolean(),
+  "huntName": zod.string(),
   "createdAt": zod.string()
 })
 
@@ -193,7 +208,9 @@ export const UpdateSessionSettingsHeader = zod.object({
 
 export const UpdateSessionSettingsBody = zod.object({
   "requireCode": zod.boolean().optional(),
-  "entriesOpen": zod.boolean().optional()
+  "entriesOpen": zod.boolean().optional(),
+  "huntEnabled": zod.boolean().optional(),
+  "huntName": zod.string().optional()
 })
 
 export const UpdateSessionSettingsResponse = zod.object({
@@ -203,6 +220,8 @@ export const UpdateSessionSettingsResponse = zod.object({
   "requireCode": zod.boolean(),
   "entriesOpen": zod.boolean(),
   "entriesAvailable": zod.boolean(),
+  "huntEnabled": zod.boolean(),
+  "huntName": zod.string(),
   "createdAt": zod.string()
 })
 
@@ -276,7 +295,8 @@ export const ListAdminCostumesResponseItem = zod.object({
   "imagePath": zod.string(),
   "displayOrder": zod.number(),
   "status": zod.enum(['approved', 'pending', 'rejected']),
-  "submittedBy": zod.string().nullish()
+  "submittedBy": zod.string().nullish(),
+  "huntCode": zod.string().nullish()
 })
 export const ListAdminCostumesResponse = zod.array(ListAdminCostumesResponseItem)
 
@@ -317,7 +337,8 @@ export const SetCostumeStatusResponse = zod.object({
   "imagePath": zod.string(),
   "displayOrder": zod.number(),
   "status": zod.enum(['approved', 'pending', 'rejected']),
-  "submittedBy": zod.string().nullish()
+  "submittedBy": zod.string().nullish(),
+  "huntCode": zod.string().nullish()
 })
 
 
@@ -345,7 +366,8 @@ export const UpdateCostumeResponse = zod.object({
   "imagePath": zod.string(),
   "displayOrder": zod.number(),
   "status": zod.enum(['approved', 'pending', 'rejected']),
-  "submittedBy": zod.string().nullish()
+  "submittedBy": zod.string().nullish(),
+  "huntCode": zod.string().nullish()
 })
 
 

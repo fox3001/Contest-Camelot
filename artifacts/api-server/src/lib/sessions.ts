@@ -20,6 +20,8 @@ export function serializeSession(s: Session) {
     requireCode: s.requireCode,
     entriesOpen: s.entriesOpen && cloudinaryEnabled(),
     entriesAvailable: cloudinaryEnabled(),
+    huntEnabled: s.huntEnabled,
+    huntName: s.huntName,
     createdAt: s.createdAt.toISOString(),
   };
 }

@@ -25,6 +25,7 @@ import { getCurrentSession, serializeSession } from "../lib/sessions";
 import { rankCostumes } from "../lib/ranking";
 import { checkConnection, cloudinaryEnabled, cloudinaryParseError, destroyImage, signedUpload, uploadPrivateText } from "../lib/cloudinary";
 import { sanitizeTheme } from "../lib/theme";
+import { ensureHuntCodes, huntLeaderboard, makeHuntCode } from "../lib/hunt";
 import { settingsTable } from "@workspace/db";
 
 const router = Router();
@@ -112,6 +113,9 @@ router.get("/results", async (req, res) => {
       requireCode: session.requireCode,
       entriesOpen: session.entriesOpen,
       pendingEntries,
+      huntEnabled: session.huntEnabled,
+      huntName: session.huntName,
+      hunters: (await huntLeaderboard(session.id)).slice(0, 20).map(({ nickname, count, minutes, rank }) => ({ nickname, count, minutes, rank })),
       totalVoters,
       codesTotal: codes?.total ?? 0,
       codesUsed: codes?.used ?? 0,
@@ -193,12 +197,14 @@ router.put("/sessions/:id/reopen", async (req, res) => {
 router.put("/sessions/:id/settings", async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { requireCode, entriesOpen } = (req.body ?? {}) as { requireCode?: unknown; entriesOpen?: unknown };
-    const patch: { requireCode?: boolean; entriesOpen?: boolean } = {};
+    const { requireCode, entriesOpen, huntEnabled, huntName } = (req.body ?? {}) as Record<string, unknown>;
+    const patch: { requireCode?: boolean; entriesOpen?: boolean; huntEnabled?: boolean; huntName?: string } = {};
     if (typeof requireCode === "boolean") patch.requireCode = requireCode;
     if (typeof entriesOpen === "boolean") patch.entriesOpen = entriesOpen;
+    if (typeof huntEnabled === "boolean") patch.huntEnabled = huntEnabled;
+    if (typeof huntName === "string" && huntName.trim()) patch.huntName = huntName.replace(/[\u0000-\u001f]/g, " ").trim().slice(0, 40);
     if (Object.keys(patch).length === 0) {
-      res.status(400).json({ error: "requireCode or entriesOpen must be boolean" });
+      res.status(400).json({ error: "nothing to update" });
       return;
     }
     const [session] = await db.update(sessionsTable).set(patch).where(eq(sessionsTable.id, id)).returning();
@@ -206,6 +212,7 @@ router.put("/sessions/:id/settings", async (req, res) => {
       res.status(404).json({ error: "Session not found" });
       return;
     }
+    if (session.huntEnabled) await ensureHuntCodes(session.id);
     res.json(serializeSession(session));
   } catch (err) {
     req.log.error({ err }, "Failed to update session settings");
@@ -224,6 +231,7 @@ router.get("/costumes", async (req, res) => {
       res.json([]);
       return;
     }
+    await ensureHuntCodes(session.id);
     const costumes = await db
       .select()
       .from(costumesTable)
@@ -265,7 +273,7 @@ router.post("/costumes", async (req, res) => {
     }
     const [costume] = await db
       .insert(costumesTable)
-      .values({ sessionId: session.id, name, imagePath, displayOrder })
+      .values({ sessionId: session.id, name, imagePath, displayOrder, huntCode: makeHuntCode() })
       .returning();
     res.status(201).json(costume);
   } catch (err) {

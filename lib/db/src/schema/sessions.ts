@@ -10,6 +10,9 @@ export const sessionsTable = pgTable("sessions", {
   requireCode: boolean("require_code").notNull().default(false),
   // Se true, i partecipanti possono iscrivere il proprio costume con una foto
   entriesOpen: boolean("entries_open").notNull().default(true),
+  // Modalità caccia: per votare un costume bisogna scansionarne il QR
+  huntEnabled: boolean("hunt_enabled").notNull().default(false),
+  huntName: text("hunt_name").notNull().default("Photo Hunters"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

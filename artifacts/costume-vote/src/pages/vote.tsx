@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useListCostumes, useGetActiveSession, getGetActiveSessionQueryKey } from "@workspace/api-client-react";
@@ -7,6 +7,8 @@ import { optimizedImage } from "@/lib/images";
 import { useTheme } from "@/lib/theme";
 import { OrganizerLink } from "@/components/OrganizerLink";
 import { VoterTabs } from "@/components/VoterTabs";
+import { QrScanner } from "@/components/QrScanner";
+import { CATCH_ERRORS, catchCostume } from "@/lib/hunt";
 
 type SaveState = "saving" | "saved" | "error";
 
@@ -95,6 +97,62 @@ export default function Vote() {
 
   // Il mio costume (iscritto da questo telefono): non si può votare
   const [ownId, setOwnId] = useState<number | null>(null);
+
+  // Modalità caccia: si vota solo dopo aver scansionato il QR del costume
+  const [hunt, setHunt] = useState<{ enabled: boolean; name: string; caught: Set<number>; count: number }>({
+    enabled: false,
+    name: "",
+    caught: new Set(),
+    count: 0,
+  });
+  const [scanning, setScanning] = useState(false);
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+  const [highlight, setHighlight] = useState<number | null>(null);
+
+  const loadHunt = useCallback(() => {
+    if (!voterToken) return;
+    fetch(`/api/hunt/me?token=${encodeURIComponent(voterToken)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setHunt({ enabled: !!d.enabled, name: d.name, caught: new Set<number>(d.caught), count: d.count }))
+      .catch(() => {});
+  }, [voterToken]);
+
+  useEffect(() => {
+    loadHunt();
+    const t = setInterval(loadHunt, 10000);
+    return () => clearInterval(t);
+  }, [loadHunt]);
+
+  const focusCostume = useCallback((id: number) => {
+    setHighlight(id);
+    setTimeout(() => document.getElementById(`costume-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+    setTimeout(() => setHighlight(null), 4000);
+  }, []);
+
+  // Arrivo da un QR (/vote#costume-12): porto in vista il costume catturato
+  useEffect(() => {
+    const m = window.location.hash.match(/^#costume-(\d+)$/);
+    if (m && costumes?.length) {
+      focusCostume(Number(m[1]));
+      history.replaceState(null, "", window.location.pathname);
+    }
+  }, [costumes?.length, focusCostume]);
+
+  const onScanned = useCallback(
+    async (code: string) => {
+      setScanning(false);
+      const r = await catchCostume(code);
+      if (r.ok) {
+        setNotice({ ok: true, text: r.already ? `${r.name}: già catturato. Puoi votarlo.` : `Catturato: ${r.name}! Ora puoi votarlo.` });
+        loadHunt();
+        focusCostume(r.costumeId);
+      } else {
+        setNotice({ ok: false, text: CATCH_ERRORS[r.error] ?? CATCH_ERRORS.server_error });
+      }
+      setTimeout(() => setNotice(null), 6000);
+    },
+    [loadHunt, focusCostume],
+  );
   const [hasEntry, setHasEntry] = useState(false);
   const costumeCount = costumes?.length ?? 0;
   useEffect(() => {
@@ -170,6 +228,12 @@ export default function Vote() {
       });
       if (res.status === 403) {
         const body = await res.json().catch(() => ({}));
+        if (body?.error === "not_caught") {
+          setStatus((prev) => ({ ...prev, [costumeId]: "error" }));
+          setVotes((prev) => ({ ...prev, [costumeId]: 0 }));
+          loadHunt();
+          return;
+        }
         if (body?.error === "own_costume") {
           setOwnId(costumeId);
           setStatus((prev) => ({ ...prev, [costumeId]: "error" }));
@@ -273,6 +337,29 @@ export default function Vote() {
               className="mt-3 w-full bg-background border border-input rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           )}
+          {hunt.enabled && (
+            <div className="mt-3 flex items-center gap-2">
+              <div className="flex-1 min-w-0 bg-primary/10 border border-primary/30 rounded-xl px-3 py-2">
+                <p className="text-[11px] text-muted-foreground truncate">{hunt.name}</p>
+                <p className="text-sm text-foreground leading-tight">
+                  <span className="font-semibold text-primary">{hunt.count}</span> {hunt.count === 1 ? "costume catturato" : "costumi catturati"}
+                </p>
+              </div>
+              <button
+                onClick={() => setScanning(true)}
+                className="shrink-0 bg-primary text-primary-foreground font-semibold rounded-xl px-4 py-3 text-sm flex items-center gap-1.5"
+              >
+                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
+                </svg>
+                Scansiona
+              </button>
+            </div>
+          )}
+          {notice && (
+            <p className={`mt-2 text-xs rounded-lg px-3 py-2 ${notice.ok ? "bg-primary/15 text-foreground" : "bg-destructive/15 text-foreground"}`}>{notice.text}</p>
+          )}
           {errorCount > 0 && (
             <p className="mt-2 text-xs text-destructive">
               {errorCount === 1 ? "1 voto non è stato salvato" : `${errorCount} voti non sono stati salvati`}: controlla la connessione e tocca di nuovo le stelle.
@@ -289,10 +376,13 @@ export default function Vote() {
           return (
             <motion.div
               key={costume.id}
+              id={`costume-${costume.id}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: Math.min(index, 4) * 0.06 }}
-              className={`bg-card border rounded-2xl overflow-hidden shadow ${st === "error" ? "border-destructive" : "border-border"}`}
+              className={`bg-card border rounded-2xl overflow-hidden shadow transition-shadow ${
+                highlight === costume.id ? "border-primary ring-4 ring-primary/40" : st === "error" ? "border-destructive" : "border-border"
+              }`}
             >
               {costume.imagePath && (
                 <div
@@ -339,6 +429,13 @@ export default function Vote() {
                   <p className="text-center text-sm text-primary py-2">
                     ✦ Il tuo costume <span className="text-muted-foreground">· non puoi votarlo</span>
                   </p>
+                ) : hunt.enabled && !hunt.caught.has(costume.id) ? (
+                  <button
+                    onClick={() => setScanning(true)}
+                    className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-border py-3 text-sm text-muted-foreground hover:border-primary/60 transition"
+                  >
+                    <span aria-hidden="true">🔒</span> Trovalo e scansiona il suo QR per votarlo
+                  </button>
                 ) : (
                   <StarRating score={votes[costume.id] ?? 0} onChange={handleVoteChange} costumeId={costume.id} disabled={st === "saving"} />
                 )}
@@ -370,6 +467,8 @@ export default function Vote() {
 
         <OrganizerLink />
       </div>
+
+      {scanning && <QrScanner title={hunt.name || "Scansiona"} onCode={onScanned} onClose={() => setScanning(false)} />}
 
       {/* Lightbox */}
       <AnimatePresence>

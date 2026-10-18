@@ -20,6 +20,7 @@ import {
   type Costume,
 } from "@workspace/api-client-react";
 import { optimizedImage } from "@/lib/images";
+import { huntUrl, qrDataUrl } from "@/lib/hunt";
 import { useQueryClient } from "@tanstack/react-query";
 import { adminRequest, clearAdminToken, getAdminToken, setAdminToken } from "@/lib/storage";
 
@@ -377,6 +378,117 @@ function EntriesPanel({ costumes, onChanged }: { costumes: Costume[] | undefined
   );
 }
 
+function HuntPanel({ costumes }: { costumes: Costume[] | undefined }) {
+  const queryClient = useQueryClient();
+  const { data: results } = useGetResults({ query: { queryKey: getGetResultsQueryKey(), retry: false, refetchInterval: 10000 }, request: adminRequest() });
+  const [name, setName] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  if (!results) return null;
+  const shownName = name ?? results.huntName;
+
+  const save = async (patch: { huntEnabled?: boolean; huntName?: string }) => {
+    setBusy(true);
+    setError("");
+    try {
+      await updateSessionSettings(results.sessionId, patch, adminRequest());
+      queryClient.invalidateQueries({ queryKey: getGetResultsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetActiveSessionQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getListAdminCostumesQueryKey() });
+      if (patch.huntName) setName(null);
+    } catch {
+      setError("Operazione non riuscita, riprova.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const printQr = async () => {
+    const list = (costumes ?? []).filter((c) => c.status === "approved" && c.huntCode);
+    const w = window.open("", "_blank");
+    if (!w) return;
+    const cards = await Promise.all(
+      list.map(async (c) => {
+        const qr = await qrDataUrl(huntUrl(c.huntCode!), 400);
+        const esc = (t: string) => t.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]!);
+        return `<div class="c"><img class="q" src="${qr}"/><b>${esc(c.name)}</b><span>${c.huntCode}</span></div>`;
+      }),
+    );
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>QR ${results.huntName}</title>
+      <style>body{font-family:Georgia,serif;margin:10mm}.g{display:grid;grid-template-columns:repeat(3,1fr);gap:5mm}
+      .c{border:1px dashed #888;padding:4mm;text-align:center;break-inside:avoid}.q{width:100%;height:auto}
+      .c b{display:block;font-size:11pt;margin-top:2mm}.c span{font-family:monospace;font-size:14pt;letter-spacing:3pt}</style></head>
+      <body><div class="g">${cards.join("")}</div><script>window.onload=()=>window.print()<\/script></body></html>`);
+    w.document.close();
+  };
+
+  const hunters = results.hunters ?? [];
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-medium text-foreground">Modalità caccia: {results.huntName}</h2>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+            Quando è attiva, per votare un costume bisogna trovarlo e scansionarne il QR. Chi è in costume trova il suo QR nella scheda "Il tuo costume". Puoi accenderla e spegnerla quando vuoi.
+          </p>
+        </div>
+        <button
+          role="switch"
+          aria-checked={results.huntEnabled}
+          aria-label="Modalità caccia"
+          disabled={busy}
+          onClick={() => save({ huntEnabled: !results.huntEnabled })}
+          className={`relative shrink-0 w-12 h-7 rounded-full transition ${results.huntEnabled ? "bg-primary" : "bg-muted"} disabled:opacity-50`}
+        >
+          <span className={`absolute top-1 w-5 h-5 rounded-full bg-background transition-all ${results.huntEnabled ? "left-6" : "left-1"}`} />
+        </button>
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          value={shownName}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={40}
+          aria-label="Nome della modalità"
+          className="flex-1 bg-background border border-input rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+        />
+        <button
+          disabled={busy || !shownName.trim() || shownName.trim() === results.huntName}
+          onClick={() => save({ huntName: shownName.trim() })}
+          className="bg-muted text-foreground text-sm rounded-xl px-4 disabled:opacity-40"
+        >
+          Rinomina
+        </button>
+      </div>
+
+      <button onClick={printQr} className="w-full bg-muted text-foreground rounded-xl py-2.5 text-sm hover:opacity-80 transition">
+        Stampa i QR dei costumi in gara
+      </button>
+
+      <div>
+        <p className="text-xs font-medium text-primary uppercase tracking-widest mb-2">Classifica cacciatori (solo admin)</p>
+        {hunters.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Ancora nessuna cattura.</p>
+        ) : (
+          <ol className="space-y-1">
+            {hunters.slice(0, 10).map((h) => (
+              <li key={h.rank} className="flex items-center gap-3 text-sm">
+                <span className="w-6 text-center text-muted-foreground">{h.rank}</span>
+                <span className="flex-1 truncate text-foreground">{h.nickname}</span>
+                <span className="text-primary font-medium">{h.count}</span>
+                <span className="text-xs text-muted-foreground w-16 text-right">{h.minutes} min</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+    </div>
+  );
+}
+
 function PasswordPanel() {
   const [current, setCurrent] = useState<string | null>(null);
   const [show, setShow] = useState(false);
@@ -620,6 +732,8 @@ export default function AdminGestione() {
         </form>
 
         <EntriesPanel costumes={costumes} onChanged={refresh} />
+
+        <HuntPanel costumes={costumes} />
 
         <VoterCodesPanel />
 

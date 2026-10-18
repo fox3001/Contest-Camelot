@@ -15,6 +15,8 @@ export interface Session {
     requireCode: boolean;
     entriesOpen: boolean;
     entriesAvailable: boolean;
+    huntEnabled: boolean;
+    huntName: string;
     createdAt: string;
 }
 export interface SessionInput {
@@ -35,6 +37,8 @@ export interface Costume {
     status: CostumeStatus;
     /** @nullable */
     submittedBy?: string | null;
+    /** @nullable */
+    huntCode?: string | null;
 }
 export interface CostumeInput {
     name: string;
@@ -84,6 +88,12 @@ export interface CostumeResult {
     weightedScore: number;
     rank: number;
 }
+export interface Hunter {
+    nickname: string;
+    count: number;
+    minutes: number;
+    rank: number;
+}
 export interface ResultsSummary {
     sessionId: number;
     sessionName: string;
@@ -91,6 +101,9 @@ export interface ResultsSummary {
     requireCode: boolean;
     entriesOpen: boolean;
     pendingEntries: number;
+    huntEnabled: boolean;
+    huntName: string;
+    hunters: Hunter[];
     totalVoters: number;
     codesTotal: number;
     codesUsed: number;
@@ -100,6 +113,8 @@ export interface ResultsSummary {
 export interface SessionSettingsInput {
     requireCode?: boolean;
     entriesOpen?: boolean;
+    huntEnabled?: boolean;
+    huntName?: string;
 }
 export type CostumeStatusInputStatus = typeof CostumeStatusInputStatus[keyof typeof CostumeStatusInputStatus];
 export declare const CostumeStatusInputStatus: {

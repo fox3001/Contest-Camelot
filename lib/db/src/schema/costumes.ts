@@ -15,6 +15,8 @@ export const costumesTable = pgTable("costumes", {
   deviceId: text("device_id"),
   submittedBy: text("submitted_by"),
   imagePublicId: text("image_public_id"),
+  // Codice segreto del QR della modalità caccia
+  huntCode: text("hunt_code"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

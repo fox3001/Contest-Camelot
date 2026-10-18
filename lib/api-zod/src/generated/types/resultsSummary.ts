@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CostumeResult } from './costumeResult';
+import type { Hunter } from './hunter';
 
 export interface ResultsSummary {
   sessionId: number;
@@ -14,6 +15,9 @@ export interface ResultsSummary {
   requireCode: boolean;
   entriesOpen: boolean;
   pendingEntries: number;
+  huntEnabled: boolean;
+  huntName: string;
+  hunters: Hunter[];
   totalVoters: number;
   codesTotal: number;
   codesUsed: number;

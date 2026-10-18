@@ -52,6 +52,17 @@ const STATEMENTS: string[] = [
      CONSTRAINT voter_codes_session_code_unique UNIQUE (session_id, code)
    )`,
   `ALTER TABLE sessions ALTER COLUMN entries_open SET DEFAULT true`,
+  `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS hunt_enabled boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE sessions ADD COLUMN IF NOT EXISTS hunt_name text NOT NULL DEFAULT 'Photo Hunters'`,
+  `ALTER TABLE costumes ADD COLUMN IF NOT EXISTS hunt_code text`,
+  `CREATE TABLE IF NOT EXISTS hunt_catches (
+     id serial PRIMARY KEY,
+     session_id integer NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+     voter_id integer NOT NULL REFERENCES voters(id) ON DELETE CASCADE,
+     costume_id integer NOT NULL REFERENCES costumes(id) ON DELETE CASCADE,
+     created_at timestamp NOT NULL DEFAULT now(),
+     CONSTRAINT hunt_catches_voter_costume_unique UNIQUE (voter_id, costume_id)
+   )`,
   `CREATE TABLE IF NOT EXISTS app_settings (
      key text PRIMARY KEY,
      value jsonb NOT NULL,
@@ -65,6 +76,9 @@ const OPTIONAL_STATEMENTS: string[] = [
      ON voters (session_id, device_id) WHERE device_id IS NOT NULL`,
   `CREATE INDEX IF NOT EXISTS voters_session_nickname_idx ON voters (session_id, lower(nickname))`,
   `CREATE INDEX IF NOT EXISTS votes_costume_idx ON votes (costume_id)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS costumes_session_hunt_code_unique
+     ON costumes (session_id, hunt_code) WHERE hunt_code IS NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS hunt_catches_session_idx ON hunt_catches (session_id)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS costumes_session_device_unique
      ON costumes (session_id, device_id) WHERE device_id IS NOT NULL`,
 ];

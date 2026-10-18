@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Home from "./pages/home";
 import Vote from "./pages/vote";
 import Entra from "./pages/entra";
+import Caccia from "./pages/caccia";
 import Closed from "./pages/closed";
 import Iscriviti from "./pages/iscriviti";
 import AdminLogin from "./pages/admin/login";
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/entra" component={Entra} />
       <Route path="/vote" component={Vote} />
+      <Route path="/caccia/:code" component={Caccia} />
       <Route path="/closed" component={Closed} />
       <Route path="/iscriviti" component={Iscriviti} />
       

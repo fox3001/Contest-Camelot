@@ -476,7 +476,7 @@ components:
 
     Session:
       type: object
-      required: [id, name, isOpen, requireCode, entriesOpen, entriesAvailable, createdAt]
+      required: [id, name, isOpen, requireCode, entriesOpen, entriesAvailable, huntEnabled, huntName, createdAt]
       properties:
         id:
           type: integer
@@ -490,6 +490,10 @@ components:
           type: boolean
         entriesAvailable:
           type: boolean
+        huntEnabled:
+          type: boolean
+        huntName:
+          type: string
         createdAt:
           type: string
 
@@ -518,6 +522,8 @@ components:
           type: string
           enum: [approved, pending, rejected]
         submittedBy:
+          type: [string, "null"]
+        huntCode:
           type: [string, "null"]
 
     CostumeInput:
@@ -623,7 +629,7 @@ components:
 
     ResultsSummary:
       type: object
-      required: [sessionId, sessionName, isOpen, requireCode, entriesOpen, pendingEntries, totalVoters, codesTotal, codesUsed, top5, allCostumes]
+      required: [sessionId, sessionName, isOpen, requireCode, entriesOpen, pendingEntries, huntEnabled, huntName, hunters, totalVoters, codesTotal, codesUsed, top5, allCostumes]
       properties:
         sessionId:
           type: integer
@@ -637,6 +643,14 @@ components:
           type: boolean
         pendingEntries:
           type: integer
+        huntEnabled:
+          type: boolean
+        huntName:
+          type: string
+        hunters:
+          type: array
+          items:
+            $ref: "#/components/schemas/Hunter"
         totalVoters:
           type: integer
         codesTotal:
@@ -659,6 +673,10 @@ components:
           type: boolean
         entriesOpen:
           type: boolean
+        huntEnabled:
+          type: boolean
+        huntName:
+          type: string
 
     CostumeStatusInput:
       type: object
@@ -693,4 +711,17 @@ components:
       required: [created]
       properties:
         created:
+          type: integer
+
+    Hunter:
+      type: object
+      required: [nickname, count, minutes, rank]
+      properties:
+        nickname:
+          type: string
+        count:
+          type: integer
+        minutes:
+          type: integer
+        rank:
           type: integer

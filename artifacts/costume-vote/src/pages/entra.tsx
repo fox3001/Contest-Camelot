@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useGetActiveSession, getGetActiveSessionQueryKey, useRegisterVoter } from "@workspace/api-client-react";
 import { getDeviceId, getLastNickname, getStoredVoter, setStoredVoter } from "@/lib/storage";
 import { useTheme } from "@/lib/theme";
+import { takePendingCode } from "@/lib/hunt";
 
 const ERROR_MESSAGES: Record<string, string> = {
   nickname_taken: "Nickname già in uso, scegline un altro.",
@@ -80,7 +81,9 @@ export default function Entra() {
       {
         onSuccess: (data) => {
           setStoredVoter(data);
-          setLocation("/vote");
+          // Arrivato qui da un QR prima di entrare: completo la cattura
+          const pending = takePendingCode();
+          setLocation(pending ? `/caccia/${pending}` : "/vote");
         },
         onError: (err: any) => {
           const key = err?.data?.error as string | undefined;

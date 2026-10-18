@@ -15,5 +15,7 @@ export interface Costume {
     status: CostumeStatus;
     /** @nullable */
     submittedBy?: string | null;
+    /** @nullable */
+    huntCode?: string | null;
 }
 //# sourceMappingURL=costume.d.ts.map

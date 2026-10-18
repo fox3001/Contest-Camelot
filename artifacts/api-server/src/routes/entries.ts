@@ -3,6 +3,7 @@ import { db, costumesTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import { getCurrentSession } from "../lib/sessions";
 import { cloudinaryEnabled, destroyImage, isOwnUpload, uploadSignature } from "../lib/cloudinary";
+import { ensureHuntCodes, makeHuntCode } from "../lib/hunt";
 
 /**
  * Iscrizioni dei partecipanti: ogni telefono iscrive un costume per sessione.
@@ -21,13 +22,15 @@ function readDevice(value: unknown): string | null {
   return d.length >= 16 && d.length <= 128 ? d : null;
 }
 
-function serializeEntry(c: typeof costumesTable.$inferSelect) {
+function serializeEntry(c: typeof costumesTable.$inferSelect, huntEnabled = false) {
   return {
     id: c.id,
     name: c.name,
     submittedBy: c.submittedBy,
     imagePath: c.imagePath,
     status: c.status,
+    // Il QR serve solo quando il costume è in gara e la modalità caccia è attiva
+    huntCode: huntEnabled && c.status === "approved" ? c.huntCode : null,
   };
 }
 
@@ -70,8 +73,9 @@ router.get("/mine", async (req, res) => {
       res.json({ entry: null });
       return;
     }
+    if (session.huntEnabled) await ensureHuntCodes(session.id);
     const entry = await findEntry(session.id, deviceId);
-    res.json({ entry: entry ? serializeEntry(entry) : null });
+    res.json({ entry: entry ? serializeEntry(entry, session.huntEnabled) : null, huntEnabled: session.huntEnabled, huntName: session.huntName });
   } catch (err) {
     req.log.error({ err }, "Failed to get entry");
     res.status(500).json({ error: "server_error" });
@@ -162,6 +166,7 @@ router.post("/", async (req, res) => {
         deviceId,
         status: "pending",
         displayOrder: 1000 + count,
+        huntCode: makeHuntCode(),
       })
       .returning();
     res.status(201).json({ entry: serializeEntry(created) });
