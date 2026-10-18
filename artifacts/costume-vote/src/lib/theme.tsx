@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode, type CSSProperties } from "react";
 import defaultLogo from "@assets/logo_ballo_dark_glow_1782294241374-jfuYTOf4.png";
 import { optimizedImage } from "@/lib/images";
 
@@ -17,8 +17,32 @@ export const TITLE_FONTS = [
   "Uncial Antiqua",
   "MedievalSharp",
   "Almendra",
+  "Pirata One",
+  "Metamorphous",
+  "New Rocker",
+  "Grenze Gotisch",
+  "Germania One",
+  "Creepster",
+  "Henny Penny",
+  "Bebas Neue",
   "DM Sans",
 ] as const;
+
+export const BODY_FONTS = [
+  "DM Sans",
+  "Inter",
+  "Lato",
+  "Nunito",
+  "Merriweather",
+  "Cormorant Garamond",
+  "EB Garamond",
+  "IM Fell English",
+  "Grenze",
+  "Oswald",
+] as const;
+
+/** Nome valido di un carattere di Google Fonts (lettere, numeri e spazi). */
+export const FONT_NAME = /^[A-Za-z0-9 ]{2,40}$/;
 
 export const BG_DIRECTIONS = [
   { id: "su", label: "↑ Su", dx: 0, dy: -1 },
@@ -33,19 +57,52 @@ export const BG_DIRECTIONS = [
 
 export const TEXT_FIELDS = [
   { key: "appTitle", label: "Nome della pagina (scheda del browser)", max: 60, page: "Generale" },
+
   { key: "homeTitle", label: "Titolo sotto il logo", max: 80, page: "Pagina iniziale" },
   { key: "homeSubtitle", label: "Sottotitolo sotto il logo", max: 160, page: "Pagina iniziale", multiline: true },
   { key: "voterButton", label: "Pulsante per i votanti", max: 40, page: "Pagina iniziale" },
   { key: "voterHint", label: "Spiegazione sotto il pulsante dei votanti", max: 160, page: "Pagina iniziale", multiline: true },
   { key: "adminButton", label: "Pulsante per gli organizzatori", max: 40, page: "Pagina iniziale" },
+
   { key: "nicknameLabel", label: "Etichetta del nickname", max: 40, page: "Ingresso votanti" },
   { key: "enterButton", label: "Pulsante per entrare", max: 30, page: "Ingresso votanti" },
   { key: "entryButton", label: "Pulsante iscrizione costume", max: 60, page: "Ingresso votanti" },
   { key: "waitingTitle", label: "Titolo prima dell'apertura", max: 80, page: "Ingresso votanti" },
   { key: "waitingText", label: "Testo prima dell'apertura", max: 200, page: "Ingresso votanti", multiline: true },
-  { key: "voteTitle", label: "Titolo della pagina di voto", max: 40, page: "Voto" },
-  { key: "thanksTitle", label: "Titolo dopo aver votato tutto", max: 40, page: "Voto" },
-  { key: "thanksText", label: "Testo dopo aver votato tutto", max: 200, page: "Voto", multiline: true },
+
+  { key: "tabVote", label: "Scheda: votare", max: 30, page: "Pannello votante" },
+  { key: "tabEntry", label: "Scheda: iscriversi", max: 30, page: "Pannello votante" },
+  { key: "tabMyEntry", label: "Scheda: dopo l'iscrizione", max: 30, page: "Pannello votante" },
+  { key: "voteTitle", label: "Titolo della pagina di voto", max: 40, page: "Pannello votante" },
+  { key: "emptyTitle", label: "Titolo se non ci sono costumi", max: 60, page: "Pannello votante" },
+  { key: "emptyText", label: "Testo se non ci sono costumi", max: 200, page: "Pannello votante", multiline: true },
+  { key: "ownCostume", label: "Etichetta sul proprio costume", max: 60, page: "Pannello votante" },
+  { key: "thanksTitle", label: "Titolo dopo aver votato tutto", max: 40, page: "Pannello votante" },
+  { key: "thanksText", label: "Testo dopo aver votato tutto", max: 200, page: "Pannello votante", multiline: true },
+
+  { key: "entryIntro", label: "Spiegazione per iscriversi", max: 240, page: "Iscrizione costume", multiline: true },
+  { key: "consentText", label: "Casella di consenso sulla foto", max: 160, page: "Iscrizione costume", multiline: true },
+  { key: "entrySubmit", label: "Pulsante per inviare", max: 30, page: "Iscrizione costume" },
+  { key: "pendingTitle", label: "Stato: in attesa (titolo)", max: 60, page: "Iscrizione costume" },
+  { key: "pendingText", label: "Stato: in attesa (testo)", max: 200, page: "Iscrizione costume", multiline: true },
+  { key: "approvedTitle", label: "Stato: approvato (titolo)", max: 60, page: "Iscrizione costume" },
+  { key: "approvedText", label: "Stato: approvato (testo)", max: 200, page: "Iscrizione costume", multiline: true },
+  { key: "rejectedTitle", label: "Stato: rifiutato (titolo)", max: 60, page: "Iscrizione costume" },
+  { key: "rejectedText", label: "Stato: rifiutato (testo)", max: 200, page: "Iscrizione costume", multiline: true },
+
+  { key: "huntQrText", label: "Testo sopra il QR personale", max: 160, page: "Caccia ai QR", multiline: true },
+  { key: "huntLock", label: "Costume bloccato", max: 80, page: "Caccia ai QR" },
+  { key: "huntScan", label: "Pulsante per scansionare", max: 20, page: "Caccia ai QR" },
+  { key: "huntCaught", label: "Messaggio di cattura ({nome})", max: 120, page: "Caccia ai QR" },
+
+  { key: "targetIntro", label: "Annuncio: frase prima del premio", max: 160, page: "Target Hunt", multiline: true },
+  { key: "targetScanButton", label: "Annuncio: pulsante per scansionare", max: 40, page: "Target Hunt" },
+  { key: "targetLater", label: "Annuncio: pulsante per chiudere", max: 30, page: "Target Hunt" },
+  { key: "targetWrong", label: "Costume sbagliato ({nome})", max: 160, page: "Target Hunt" },
+  { key: "targetFoundBy", label: "Target trovato da altri ({vincitore})", max: 160, page: "Target Hunt" },
+  { key: "winTitle", label: "Vittoria: titolo", max: 40, page: "Target Hunt" },
+  { key: "winText", label: "Vittoria: istruzioni prima del codice", max: 160, page: "Target Hunt", multiline: true },
+
   { key: "closedTitle", label: "Titolo a votazioni chiuse", max: 60, page: "Votazioni chiuse" },
   { key: "closedSubtitle", label: "Sottotitolo a votazioni chiuse", max: 120, page: "Votazioni chiuse" },
   { key: "closedText", label: "Messaggio a votazioni chiuse", max: 240, page: "Votazioni chiuse", multiline: true },
@@ -53,22 +110,33 @@ export const TEXT_FIELDS = [
 
 export type TextKey = (typeof TEXT_FIELDS)[number]["key"];
 
-export type ThemeColors = { background: string; card: string; primary: string; text: string };
+export type ThemeColors = { background: string; card: string; primary: string; text: string; glow: string };
 
 export type Theme = {
   colors: ThemeColors;
   titleFont: string;
+  bodyFont: string;
   logo: { url: string | null; size: number };
-  background: { imageUrl: string | null; size: number; opacity: number; animate: boolean; speed: number; direction: string };
+  background: {
+    imageUrl: string | null;
+    /** "tile" = motivo ripetuto, "cover" = immagine intera a tutto schermo */
+    mode: "tile" | "cover";
+    size: number;
+    opacity: number;
+    animate: boolean;
+    speed: number;
+    direction: string;
+  };
   texts: Record<TextKey, string>;
 };
 
 /** Questi valori riproducono l'aspetto originale dell'app. */
 export const DEFAULT_THEME: Theme = {
-  colors: { background: "#08190f", card: "#0f2a1c", primary: "#ffbf00", text: "#fff6db" },
+  colors: { background: "#08190f", card: "#0f2a1c", primary: "#ffbf00", text: "#fff6db", glow: "#5c0a43" },
   titleFont: "Playfair Display",
+  bodyFont: "DM Sans",
   logo: { url: null, size: 88 },
-  background: { imageUrl: "/pattern%201.2.jpg", size: 327, opacity: 0.07, animate: true, speed: 16, direction: "giu-sinistra" },
+  background: { imageUrl: "/pattern%201.2.jpg", mode: "tile", size: 327, opacity: 0.07, animate: true, speed: 16, direction: "giu-sinistra" },
   texts: {
     appTitle: "Camelot's Tales – Vota i costumi",
     homeTitle: "",
@@ -81,16 +149,42 @@ export const DEFAULT_THEME: Theme = {
     entryButton: "Sei in costume? Iscriviti al contest",
     waitingTitle: "Le votazioni non sono ancora iniziate",
     waitingText: "Tieni aperta questa pagina: si aggiornerà da sola appena si apre il voto.",
+    tabVote: "Vota i costumi",
+    tabEntry: "Iscrivi il tuo costume",
+    tabMyEntry: "Il tuo costume",
     voteTitle: "Vota i Costumi",
+    emptyTitle: "Ancora nessun costume in gara",
+    emptyText: "Sei in costume? Iscriviti per primo! I costumi compaiono qui appena approvati: la pagina si aggiorna da sola.",
+    ownCostume: "Il tuo costume · non puoi votarlo",
     thanksTitle: "Grazie!",
     thanksText: "Hai votato tutti i costumi. Attendi il verdetto dell'araldo.",
+    entryIntro: "Una foto a figura intera, con buona luce. Un'iscrizione per telefono: per coppie e gruppi iscrive uno solo. Da questo telefono non potrai votare il tuo costume.",
+    consentText: "Le persone nella foto sono d'accordo che venga mostrata durante il contest.",
+    entrySubmit: "Iscrivi il costume",
+    pendingTitle: "In attesa di approvazione",
+    pendingText: "L'organizzazione controllerà la foto a breve. Finché non è approvata puoi cambiarla.",
+    approvedTitle: "Il tuo costume è in gara!",
+    approvedText: "Ora tutti possono votarlo. Buona fortuna.",
+    rejectedTitle: "Foto non approvata",
+    rejectedText: "Puoi caricarne un'altra qui sotto: ad esempio una foto più nitida, a figura intera.",
+    huntQrText: "Mostra questo QR a chi vuole votarti: per votarti deve scansionarlo.",
+    huntLock: "Trovalo e scansiona il suo QR per votarlo",
+    huntScan: "Scansiona",
+    huntCaught: "Catturato: {nome}! Ora puoi votarlo.",
+    targetIntro: "Il primo che trova questo costume e ne scansiona il QR vince:",
+    targetScanButton: "L'ho trovato: scansiona",
+    targetLater: "Vado a cercarlo",
+    targetWrong: "Hai catturato {nome}… ma non è il target. Rileggi l'indovinello!",
+    targetFoundBy: "Il target è stato trovato da {vincitore}. Resta pronto per il prossimo!",
+    winTitle: "Hai vinto!",
+    winText: "Mostra questo schermo all'organizzazione. Codice premio:",
     closedTitle: "Votazioni Chiuse",
     closedSubtitle: "Le votazioni sono terminate.",
     closedText: "Attendi gli annunci dell'araldo: il vincitore del concorso di costumi verrà rivelato a breve.",
   },
 };
 
-export const PRESETS: { name: string; colors: ThemeColors }[] = [
+export const PRESETS: { name: string; colors: Omit<ThemeColors, "glow"> }[] = [
   { name: "Camelot (originale)", colors: DEFAULT_THEME.colors },
   { name: "Notte reale", colors: { background: "#0a0f24", card: "#141c3a", primary: "#d8b45a", text: "#eef1ff" } },
   { name: "Bordeaux", colors: { background: "#1c0a10", card: "#2e1119", primary: "#e8b04a", text: "#fbeee6" } },
@@ -99,12 +193,71 @@ export const PRESETS: { name: string; colors: ThemeColors }[] = [
   { name: "Ghiaccio", colors: { background: "#0b1d26", card: "#12303d", primary: "#7fe3ff", text: "#eafaff" } },
 ];
 
+/** Temi completi pronti: colori, caratteri, sfondo e alcuni testi. */
+export const THEME_PRESETS: { name: string; theme: any }[] = [
+  { name: "Camelot (originale)", theme: {} },
+  {
+    name: "Vichinghi",
+    theme: {
+      colors: { background: "#0e1417", card: "#1b2529", primary: "#c9a24a", text: "#ece6d8", glow: "#2c4a5c" },
+      titleFont: "Pirata One",
+      bodyFont: "Grenze",
+      background: { imageUrl: null },
+      texts: {
+        appTitle: "Saga dei Vichinghi – Vota i costumi",
+        voterButton: "Entra nella sala dell'idromele",
+        enterButton: "Entra nel Valhalla",
+        voteTitle: "Scegli il più fiero",
+        thanksTitle: "Skål!",
+        thanksText: "Hai votato tutti i guerrieri. Attendi il verdetto dello jarl.",
+        closedTitle: "Il consiglio ha deciso",
+        closedText: "Lo jarl annuncerà presto il vincitore della saga.",
+        huntLock: "Trova questo guerriero e scansiona il suo QR",
+        winTitle: "Vittoria, guerriero!",
+        targetIntro: "Il primo che trova questo guerriero e ne scansiona il QR conquista:",
+      },
+    },
+  },
+  {
+    name: "Halloween",
+    theme: {
+      colors: { background: "#120a14", card: "#21122a", primary: "#ff7a1a", text: "#f6efe8", glow: "#7a2e00" },
+      titleFont: "Creepster",
+      bodyFont: "Nunito",
+      background: { imageUrl: null },
+      texts: {
+        appTitle: "Notte di Halloween – Vota i costumi",
+        voterButton: "Entra se hai coraggio",
+        voteTitle: "Vota il più spaventoso",
+        thanksTitle: "Dolcetto!",
+        closedTitle: "La notte è finita",
+        winTitle: "Hai vinto… per ora!",
+      },
+    },
+  },
+  {
+    name: "Carnevale",
+    theme: {
+      colors: { background: "#16092a", card: "#251242", primary: "#ff5fa2", text: "#f8efff" },
+      titleFont: "Henny Penny",
+      bodyFont: "Nunito",
+      texts: { appTitle: "Carnevale – Vota le maschere", voteTitle: "Vota le maschere", thanksTitle: "Evviva!" },
+    },
+  },
+];
+
+/** Sostituisce {nome}, {vincitore}… nei testi. */
+export function fill(text: string, vars: Record<string, string | number>) {
+  return text.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
+}
+
 /** Unisce il tema salvato (parziale) con i valori di partenza. */
 export function mergeTheme(saved: any): Theme {
   const s = saved && typeof saved === "object" ? saved : {};
   return {
     colors: { ...DEFAULT_THEME.colors, ...(s.colors ?? {}) },
     titleFont: s.titleFont ?? DEFAULT_THEME.titleFont,
+    bodyFont: s.bodyFont ?? DEFAULT_THEME.bodyFont,
     logo: { ...DEFAULT_THEME.logo, ...(s.logo ?? {}) },
     background: { ...DEFAULT_THEME.background, ...(s.background ?? {}) },
     texts: { ...DEFAULT_THEME.texts, ...Object.fromEntries(Object.entries(s.texts ?? {}).filter(([, v]) => !!v)) } as Theme["texts"],
@@ -117,6 +270,7 @@ export function diffTheme(t: Theme) {
   const colors = Object.fromEntries(Object.entries(t.colors).filter(([k, v]) => v !== (DEFAULT_THEME.colors as any)[k]));
   if (Object.keys(colors).length) out.colors = colors;
   if (t.titleFont !== DEFAULT_THEME.titleFont) out.titleFont = t.titleFont;
+  if (t.bodyFont !== DEFAULT_THEME.bodyFont) out.bodyFont = t.bodyFont;
   const logo = Object.fromEntries(Object.entries(t.logo).filter(([k, v]) => v !== (DEFAULT_THEME.logo as any)[k]));
   if (Object.keys(logo).length) out.logo = logo;
   const bg = Object.fromEntries(Object.entries(t.background).filter(([k, v]) => v !== (DEFAULT_THEME.background as any)[k]));
@@ -200,6 +354,7 @@ export function cssVariables(c: ThemeColors): Record<string, string> {
     "--primary-foreground": hsl(onPrimary(c)),
     "--muted": hsl(muted),
     "--muted-foreground": hsl(mutedFg),
+    "--glow": hsl(c.glow),
   };
 }
 
@@ -210,7 +365,7 @@ export function cssVariables(c: ThemeColors): Record<string, string> {
 const loadedFonts = new Set<string>(["Playfair Display", "DM Sans"]);
 
 export function loadFont(name: string) {
-  if (loadedFonts.has(name)) return;
+  if (!FONT_NAME.test(name) || loadedFonts.has(name)) return;
   loadedFonts.add(name);
   const link = document.createElement("link");
   link.rel = "stylesheet";
@@ -222,7 +377,9 @@ export function applyTheme(t: Theme) {
   const root = document.documentElement;
   for (const [k, v] of Object.entries(cssVariables(t.colors))) root.style.setProperty(k, v);
   loadFont(t.titleFont);
+  loadFont(t.bodyFont);
   root.style.setProperty("--app-font-serif", `'${t.titleFont}', serif`);
+  root.style.setProperty("--app-font-sans", `'${t.bodyFont}', sans-serif`);
   document.title = t.texts.appTitle || DEFAULT_THEME.texts.appTitle;
 }
 
@@ -309,6 +466,22 @@ export function BackgroundPattern({ fixed = true }: { fixed?: boolean }) {
   const { theme } = useTheme();
   const bg = theme.background;
   if (!bg.imageUrl || bg.opacity <= 0) return null;
+  const base: CSSProperties = {
+    position: fixed ? "fixed" : "absolute",
+    inset: 0,
+    zIndex: 0,
+    pointerEvents: "none",
+    opacity: bg.opacity,
+  };
+  // Immagine intera a tutto schermo
+  if (bg.mode === "cover") {
+    return (
+      <div
+        aria-hidden="true"
+        style={{ ...base, backgroundImage: `url("${optimizedImage(bg.imageUrl, 1600)}")`, backgroundSize: "cover", backgroundPosition: "center" }}
+      />
+    );
+  }
   const dir = BG_DIRECTIONS.find((d) => d.id === bg.direction) ?? BG_DIRECTIONS[6];
   const name = `bgmove-${dir.id}-${bg.size}`;
   // Spostamento di esattamente una piastrella: il movimento si ripete senza scatti
@@ -319,16 +492,12 @@ export function BackgroundPattern({ fixed = true }: { fixed?: boolean }) {
       <div
         aria-hidden="true"
         style={{
-          position: fixed ? "fixed" : "absolute",
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: "none",
+          ...base,
           backgroundImage: `url("${optimizedImage(bg.imageUrl, Math.min(1600, bg.size * 2))}")`,
           backgroundSize: `${bg.size}px ${bg.size}px`,
           backgroundRepeat: "repeat",
           // su sfondi chiari "screen" schiarirebbe tutto: si usa "multiply"
           mixBlendMode: luminance(theme.colors.background) > 0.4 ? "multiply" : "screen",
-          opacity: bg.opacity,
           animation: bg.animate ? `${name} ${bg.speed}s linear infinite` : undefined,
         }}
       />

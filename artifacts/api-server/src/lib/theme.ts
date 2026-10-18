@@ -27,19 +27,49 @@ export const TEXT_KEYS = {
   adminButton: 40,
   nicknameLabel: 40,
   enterButton: 30,
+  entryButton: 60,
   waitingTitle: 80,
   waitingText: 200,
-  entryButton: 60,
+  tabVote: 30,
+  tabEntry: 30,
+  tabMyEntry: 30,
   voteTitle: 40,
+  emptyTitle: 60,
+  emptyText: 200,
+  ownCostume: 60,
   thanksTitle: 40,
   thanksText: 200,
+  entryIntro: 240,
+  consentText: 160,
+  entrySubmit: 30,
+  pendingTitle: 60,
+  pendingText: 200,
+  approvedTitle: 60,
+  approvedText: 200,
+  rejectedTitle: 60,
+  rejectedText: 200,
+  huntQrText: 160,
+  huntLock: 80,
+  huntScan: 20,
+  huntCaught: 120,
+  targetIntro: 160,
+  targetScanButton: 40,
+  targetLater: 30,
+  targetWrong: 160,
+  targetFoundBy: 160,
+  winTitle: 40,
+  winText: 160,
   closedTitle: 60,
   closedSubtitle: 120,
   closedText: 240,
 } as const;
 
+/** Nome di un carattere Google Fonts: quelli in elenco o uno scritto dall'admin. */
+const FONT_NAME = /^[A-Za-z0-9 ]{2,40}$/;
+export const BG_MODES = ["tile", "cover"] as const;
+
 const HEX = /^#[0-9a-fA-F]{6}$/;
-const COLOR_KEYS = ["background", "card", "primary", "text"] as const;
+const COLOR_KEYS = ["background", "card", "primary", "text", "glow"] as const;
 
 function cleanUrl(v: unknown): string | null | undefined {
   if (v === null) return null;
@@ -65,9 +95,11 @@ function cleanText(v: unknown, max: number): string | undefined {
 export type Theme = {
   colors?: Partial<Record<(typeof COLOR_KEYS)[number], string>>;
   titleFont?: string;
+  bodyFont?: string;
   logo?: { url?: string | null; size?: number };
   background?: {
     imageUrl?: string | null;
+    mode?: string;
     size?: number;
     opacity?: number;
     animate?: boolean;
@@ -89,8 +121,9 @@ export function sanitizeTheme(input: any): Theme {
       }
       if (Object.keys(colors).length) out.colors = colors;
     }
-    if (typeof input.titleFont === "string" && (TITLE_FONTS as readonly string[]).includes(input.titleFont)) {
-      out.titleFont = input.titleFont;
+    for (const k of ["titleFont", "bodyFont"] as const) {
+      const f = typeof input[k] === "string" ? input[k].trim().replace(/\s+/g, " ") : "";
+      if (FONT_NAME.test(f)) out[k] = f;
     }
     if (input.logo && typeof input.logo === "object") {
       const logo: NonNullable<Theme["logo"]> = {};
@@ -105,6 +138,7 @@ export function sanitizeTheme(input: any): Theme {
       const bg: NonNullable<Theme["background"]> = {};
       const url = cleanUrl(b.imageUrl);
       if (url !== undefined) bg.imageUrl = url;
+      if (typeof b.mode === "string" && (BG_MODES as readonly string[]).includes(b.mode)) bg.mode = b.mode;
       const size = num(b.size, 60, 1200);
       if (size !== undefined) bg.size = Math.round(size);
       const opacity = num(b.opacity, 0, 1);

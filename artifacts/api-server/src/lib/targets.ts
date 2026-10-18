@@ -26,7 +26,7 @@ export async function tryWinTarget(sessionId: number, costumeId: number, voterId
     .where(and(eq(targetsTable.id, t.id), eq(targetsTable.status, "active"), isNull(targetsTable.winnerVoterId)))
     .returning();
   if (!won) return null;
-  return { targetId: won.id, title: won.title, prize: won.prize, claimCode };
+  return { targetId: won.id, title: won.title, prize: won.prize, prizeInfo: won.prizeInfo, claimCode };
 }
 
 /** Target della serata, dal più recente, con il nome del vincitore. */
@@ -40,6 +40,7 @@ export async function latestTargets(sessionId: number, limit = 20) {
       title: targetsTable.title,
       riddle: targetsTable.riddle,
       prize: targetsTable.prize,
+      prizeInfo: targetsTable.prizeInfo,
       status: targetsTable.status,
       winnerVoterId: targetsTable.winnerVoterId,
       winnerNickname: votersTable.nickname,

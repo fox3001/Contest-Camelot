@@ -81,6 +81,7 @@ const STATEMENTS: string[] = [
      value jsonb NOT NULL,
      updated_at timestamp NOT NULL DEFAULT now()
    )`,
+  `ALTER TABLE targets ADD COLUMN IF NOT EXISTS prize_info text NOT NULL DEFAULT ''`,
 ];
 
 // Indici "di sicurezza": se i dati esistenti li violano non blocchiamo l'avvio.

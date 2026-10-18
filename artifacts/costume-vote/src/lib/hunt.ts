@@ -17,7 +17,7 @@ export async function qrDataUrl(text: string, size = 600) {
   return QRCode.toDataURL(text, { margin: 1, width: size, errorCorrectionLevel: "M" });
 }
 
-export type TargetWin = { targetId: number; title: string; prize: string; claimCode: string };
+export type TargetWin = { targetId: number; title: string; prize: string; prizeInfo?: string; claimCode: string };
 
 export type CatchResult =
   | { ok: true; costumeId: number; name: string; imagePath: string; already: boolean; count: number; targetWin: TargetWin | null }

@@ -6,6 +6,7 @@ import { getDeviceId, getLastNickname, getStoredVoter } from "@/lib/storage";
 import { compressImage, explainUploadError, optimizedImage, uploadWithProgress } from "@/lib/images";
 import { VoterTabs } from "@/components/VoterTabs";
 import { huntUrl, qrDataUrl } from "@/lib/hunt";
+import { useTheme } from "@/lib/theme";
 
 type Entry = {
   id: number;
@@ -19,13 +20,14 @@ type Entry = {
 /** QR personale del costume (modalità caccia): lo si mostra a chi vuole votarlo. */
 function HuntQr({ code, huntName, costumeName }: { code: string; huntName: string; costumeName: string }) {
   const [src, setSrc] = useState("");
+  const tx = useTheme().theme.texts;
   useEffect(() => {
     qrDataUrl(huntUrl(code), 700).then(setSrc).catch(() => {});
   }, [code]);
   return (
     <div className="bg-card border border-primary/50 rounded-2xl p-5 text-center shadow-md">
       <p className="text-xs uppercase tracking-widest text-primary">{huntName}</p>
-      <p className="text-sm text-foreground mt-1">Mostra questo QR a chi vuole votarti: per votarti deve scansionarlo.</p>
+      <p className="text-sm text-foreground mt-1">{tx.huntQrText}</p>
       <div className="mt-4 mx-auto w-full max-w-[280px] bg-white rounded-2xl p-3">
         {src ? <img src={src} alt={`QR di ${costumeName}`} className="w-full h-auto" /> : <div className="aspect-square" />}
       </div>
@@ -50,28 +52,17 @@ const ERRORS: Record<string, string> = {
   full: "È stato raggiunto il numero massimo di costumi.",
 };
 
-const STATUS_TEXT: Record<Entry["status"], { title: string; text: string; cls: string }> = {
-  pending: {
-    title: "In attesa di approvazione",
-    text: "L'organizzazione controllerà la foto a breve. Finché non è approvata puoi cambiarla.",
-    cls: "border-primary/40 bg-primary/10",
-  },
-  approved: {
-    title: "Il tuo costume è in gara!",
-    text: "Ora tutti possono votarlo. Buona fortuna.",
-    cls: "border-primary bg-primary/15",
-  },
-  rejected: {
-    title: "Foto non approvata",
-    text: "Puoi caricarne un'altra qui sotto: ad esempio una foto più nitida, a figura intera.",
-    cls: "border-destructive/50 bg-destructive/10",
-  },
+const STATUS_CLS: Record<Entry["status"], string> = {
+  pending: "border-primary/40 bg-primary/10",
+  approved: "border-primary bg-primary/15",
+  rejected: "border-destructive/50 bg-destructive/10",
 };
 
 export default function Iscriviti() {
   const [, setLocation] = useLocation();
   // Indietro: alla lista dei costumi se sei già entrato come votante, altrimenti alla home
   const back = () => setLocation(getStoredVoter() ? "/vote" : "/");
+  const tx = useTheme().theme.texts;
   const { data: session, isLoading } = useGetActiveSession({
     query: { queryKey: getGetActiveSessionQueryKey(), refetchInterval: 10000, retry: false },
   });
@@ -219,7 +210,7 @@ export default function Iscriviti() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
           </button>
-          <h1 className="text-lg font-serif text-foreground">{entry ? "Il tuo costume" : "Iscrivi il tuo costume"}</h1>
+          <h1 className="text-lg font-serif text-foreground">{entry ? tx.tabMyEntry : tx.tabEntry}</h1>
         </div>
         <div className="max-w-lg mx-auto mt-3">
           <VoterTabs active="entry" hasEntry={!!entry} />
@@ -228,12 +219,12 @@ export default function Iscriviti() {
 
       <div className="max-w-lg mx-auto px-4 py-5 space-y-5">
         {entry && (
-          <div className={`rounded-2xl border p-4 flex gap-4 items-center ${STATUS_TEXT[entry.status].cls}`}>
+          <div className={`rounded-2xl border p-4 flex gap-4 items-center ${STATUS_CLS[entry.status]}`}>
             <img src={optimizedImage(entry.imagePath, 240)} alt={entry.name} className="w-20 h-20 rounded-xl object-cover shrink-0 bg-muted" />
             <div className="min-w-0">
               <p className="font-serif text-lg text-foreground truncate">{entry.name}</p>
-              <p className="text-sm font-medium text-foreground mt-0.5">{STATUS_TEXT[entry.status].title}</p>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{STATUS_TEXT[entry.status].text}</p>
+              <p className="text-sm font-medium text-foreground mt-0.5">{tx[`${entry.status}Title` as const]}</p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{tx[`${entry.status}Text` as const]}</p>
             </div>
           </div>
         )}
@@ -261,7 +252,7 @@ export default function Iscriviti() {
             <p className="text-sm text-muted-foreground leading-relaxed">
               {entry
                 ? "Vuoi cambiare foto o nome? Carica di nuovo qui sotto."
-                : "Una foto a figura intera, con buona luce. Un'iscrizione per telefono: per coppie e gruppi iscrive uno solo. Da questo telefono non potrai votare il tuo costume."}
+                : tx.entryIntro}
             </p>
 
             <div>
@@ -312,8 +303,8 @@ export default function Iscriviti() {
             </div>
 
             <label className="flex items-start gap-3 text-sm text-muted-foreground leading-relaxed cursor-pointer">
-              <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 w-4 h-4 accent-[hsl(45_100%_50%)] shrink-0" />
-              Le persone nella foto sono d'accordo che venga mostrata durante il contest.
+              <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 w-4 h-4 accent-primary shrink-0" />
+              {tx.consentText}
             </label>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
@@ -330,7 +321,7 @@ export default function Iscriviti() {
                 type="submit"
                 className="w-full bg-primary text-primary-foreground font-semibold rounded-xl py-4 text-base hover:opacity-90 active:scale-[0.97] transition-all shadow"
               >
-                {entry ? "Invia la nuova foto" : "Iscrivi il costume"}
+                {entry ? "Invia la nuova foto" : tx.entrySubmit}
               </button>
             )}
           </form>

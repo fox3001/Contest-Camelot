@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useListCostumes, useGetActiveSession, getGetActiveSessionQueryKey } from "@workspace/api-client-react";
 import { clearStoredVoter, getDeviceId, getStoredVoter } from "@/lib/storage";
 import { optimizedImage } from "@/lib/images";
-import { useTheme } from "@/lib/theme";
+import { fill, useTheme } from "@/lib/theme";
 import { OrganizerLink } from "@/components/OrganizerLink";
 import { VoterTabs } from "@/components/VoterTabs";
 import { QrScanner } from "@/components/QrScanner";
@@ -143,7 +143,7 @@ export default function Vote() {
       setScanning(false);
       const r = await catchCostume(code);
       if (r.ok) {
-        setNotice({ ok: true, text: r.already ? `${r.name}: già catturato. Puoi votarlo.` : `Catturato: ${r.name}! Ora puoi votarlo.` });
+        setNotice({ ok: true, text: r.already ? `${r.name}: già catturato. Puoi votarlo.` : fill(theme.texts.huntCaught, { nome: r.name }) });
         loadHunt();
         focusCostume(r.costumeId);
       } else {
@@ -290,10 +290,10 @@ export default function Vote() {
         </div>
         <div className="max-w-xs w-full my-auto py-10">
           <p className="text-xs text-muted-foreground mb-1">Ciao, {stored?.nickname || "Votante"}</p>
-          <h1 className="text-2xl font-serif text-primary mb-2">Ancora nessun costume in gara</h1>
+          <h1 className="text-2xl font-serif text-primary mb-2">{theme.texts.emptyTitle}</h1>
           <p className="text-sm text-muted-foreground mb-6">
             {entriesOpen
-              ? "Sei in costume? Iscriviti per primo! I costumi compaiono qui appena approvati: la pagina si aggiorna da sola."
+              ? theme.texts.emptyText
               : "I costumi compariranno qui appena saranno caricati: la pagina si aggiorna da sola."}
           </p>
           {entryButton}
@@ -353,7 +353,7 @@ export default function Vote() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
                 </svg>
-                Scansiona
+                {theme.texts.huntScan}
               </button>
             </div>
           )}
@@ -427,14 +427,14 @@ export default function Vote() {
 
                 {costume.id === ownId ? (
                   <p className="text-center text-sm text-primary py-2">
-                    ✦ Il tuo costume <span className="text-muted-foreground">· non puoi votarlo</span>
+                    ✦ {theme.texts.ownCostume}
                   </p>
                 ) : hunt.enabled && !hunt.caught.has(costume.id) ? (
                   <button
                     onClick={() => setScanning(true)}
                     className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-border py-3 text-sm text-muted-foreground hover:border-primary/60 transition"
                   >
-                    <span aria-hidden="true">🔒</span> Trovalo e scansiona il suo QR per votarlo
+                    <span aria-hidden="true">🔒</span> {theme.texts.huntLock}
                   </button>
                 ) : (
                   <StarRating score={votes[costume.id] ?? 0} onChange={handleVoteChange} costumeId={costume.id} disabled={st === "saving"} />
