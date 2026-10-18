@@ -62,12 +62,35 @@ export function uploadWithProgress(
       try {
         const data = JSON.parse(xhr.responseText);
         if (xhr.status >= 200 && xhr.status < 300) resolve(data);
-        else reject(new Error(data?.error?.message ?? `HTTP ${xhr.status}`));
+        else reject(new UploadError(data?.error?.message ?? `HTTP ${xhr.status}`));
       } catch {
-        reject(new Error(`HTTP ${xhr.status}`));
+        reject(new UploadError(`HTTP ${xhr.status}`));
       }
     };
     xhr.onerror = () => reject(new Error("network"));
+    xhr.ontimeout = () => reject(new Error("network"));
     xhr.send(form);
   });
+}
+
+/** Errore restituito da Cloudinary durante il caricamento. */
+export class UploadError extends Error {}
+
+/** Traduce gli errori di Cloudinary in italiano, con cosa fare. */
+export function explainUploadError(err: unknown, forAdmin = false): string {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  const who = forAdmin ? "" : " Avvisa l'organizzazione.";
+  if (msg === "network") return "Connessione assente o troppo lenta: riprova.";
+  if (!(err instanceof UploadError)) return "";
+  if (/signature/i.test(msg))
+    return forAdmin
+      ? "Cloudinary rifiuta la chiave: la password segreta (API Secret) in CLOUDINARY_URL su Render è sbagliata."
+      : "Il caricamento delle foto non è configurato correttamente." + who;
+  if (/api_key/i.test(msg))
+    return forAdmin ? "Cloudinary rifiuta la chiave: l'API Key in CLOUDINARY_URL su Render è sbagliata." : "Il caricamento delle foto non è configurato correttamente." + who;
+  if (/cloud_name|cloud name/i.test(msg))
+    return forAdmin ? "Cloudinary non trova l'account: il nome dopo la @ in CLOUDINARY_URL è sbagliato." : "Il caricamento delle foto non è configurato correttamente." + who;
+  if (/file size|too large/i.test(msg)) return "La foto è troppo grande: scegline una più piccola.";
+  if (/invalid image|unsupported|format/i.test(msg)) return "Formato della foto non supportato: prova con una foto JPG o PNG.";
+  return `Caricamento non riuscito (${msg.slice(0, 120)}).`;
 }

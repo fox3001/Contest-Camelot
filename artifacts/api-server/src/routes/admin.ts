@@ -20,7 +20,7 @@ import {
 } from "../lib/adminAuth";
 import { getCurrentSession, serializeSession } from "../lib/sessions";
 import { rankCostumes } from "../lib/ranking";
-import { cloudinaryEnabled, destroyImage, signedUpload } from "../lib/cloudinary";
+import { checkConnection, cloudinaryEnabled, cloudinaryParseError, destroyImage, signedUpload } from "../lib/cloudinary";
 import { sanitizeTheme } from "../lib/theme";
 import { settingsTable } from "@workspace/db";
 
@@ -463,6 +463,15 @@ router.put("/theme", async (req, res) => {
     req.log.error({ err }, "Failed to save theme");
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+// Diagnostica: la chiave Cloudinary è giusta?
+router.get("/cloudinary/check", async (_req, res) => {
+  if (cloudinaryParseError) {
+    res.json({ ok: false, problem: "format" });
+    return;
+  }
+  res.json(await checkConnection());
 });
 
 // Firma per caricare logo e sfondi su Cloudinary

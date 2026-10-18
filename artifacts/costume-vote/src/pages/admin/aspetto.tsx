@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
 import { adminRequest, clearAdminToken, getAdminToken } from "@/lib/storage";
-import { optimizedImage, uploadWithProgress } from "@/lib/images";
+import { explainUploadError, optimizedImage, uploadWithProgress } from "@/lib/images";
 import {
   BG_DIRECTIONS,
   DEFAULT_THEME,
@@ -125,7 +125,11 @@ function ImagePicker({
       const res = await uploadWithProgress(sign.uploadUrl, form, setProgress);
       onChange(res.secure_url);
     } catch (e: any) {
-      setError(e?.message === "cloudinary" ? "Caricamento non disponibile: usa un link." : "Caricamento non riuscito, riprova.");
+      setError(
+        e?.message === "cloudinary"
+          ? "Caricamento non disponibile (Cloudinary non configurato): usa un link."
+          : explainUploadError(e, true) || "Caricamento non riuscito, riprova.",
+      );
     } finally {
       setProgress(null);
     }

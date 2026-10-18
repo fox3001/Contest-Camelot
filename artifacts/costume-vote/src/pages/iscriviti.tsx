@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useGetActiveSession, getGetActiveSessionQueryKey } from "@workspace/api-client-react";
 import { getDeviceId, getLastNickname, getStoredVoter } from "@/lib/storage";
-import { compressImage, optimizedImage, uploadWithProgress } from "@/lib/images";
+import { compressImage, explainUploadError, optimizedImage, uploadWithProgress } from "@/lib/images";
 
 type Entry = { id: number; name: string; submittedBy: string | null; imagePath: string; status: "pending" | "approved" | "rejected" };
 
@@ -151,7 +151,7 @@ export default function Iscriviti() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err: any) {
       const key = err?.message as string;
-      setError(ERRORS[key] ?? (key === "network" ? "Connessione assente: riprova." : "Caricamento non riuscito, riprova."));
+      setError(ERRORS[key] ?? (explainUploadError(err) || "Caricamento non riuscito, riprova."));
     } finally {
       setProgress(null);
     }

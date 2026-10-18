@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { useGetActiveSession, getGetActiveSessionQueryKey } from "@workspace/api-client-react";
 import { useTheme } from "@/lib/theme";
+import { OrganizerLink } from "@/components/OrganizerLink";
 
 export default function Closed() {
   const [, setLocation] = useLocation();
@@ -79,6 +80,8 @@ export default function Closed() {
             Iscrivi il tuo costume
           </button>
         )}
+
+        <OrganizerLink />
 
         <motion.div
           initial={{ opacity: 0 }}

@@ -5,6 +5,7 @@ import { useListCostumes, useGetActiveSession, getGetActiveSessionQueryKey } fro
 import { clearStoredVoter, getStoredVoter } from "@/lib/storage";
 import { optimizedImage } from "@/lib/images";
 import { useTheme } from "@/lib/theme";
+import { OrganizerLink } from "@/components/OrganizerLink";
 
 type SaveState = "saving" | "saved" | "error";
 
@@ -208,6 +209,7 @@ export default function Vote() {
               : "I costumi compariranno qui appena saranno caricati: la pagina si aggiorna da sola."}
           </p>
           {entryButton}
+          <OrganizerLink />
         </div>
       </div>
     );
@@ -340,6 +342,8 @@ export default function Vote() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        <OrganizerLink />
       </div>
 
       {/* Lightbox */}

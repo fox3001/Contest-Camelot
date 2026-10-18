@@ -224,6 +224,46 @@ function VoterCodesPanel() {
   );
 }
 
+const CHECK_TEXT: Record<string, string> = {
+  missing: "Manca la variabile CLOUDINARY_URL su Render (Environment).",
+  format: "CLOUDINARY_URL su Render è scritta male: deve essere cloudinary://API_KEY:API_SECRET@NOME_ACCOUNT, senza spazi né < >.",
+  secret: "La password segreta (API Secret) in CLOUDINARY_URL è sbagliata: ricopiala dalla console Cloudinary.",
+  api_key: "L'API Key in CLOUDINARY_URL è sbagliata: ricopiala dalla console Cloudinary.",
+  cloud_name: "Il nome dell'account (dopo la @) in CLOUDINARY_URL è sbagliato.",
+  unreachable: "Il server non riesce a contattare Cloudinary in questo momento: riprova tra poco.",
+};
+
+function CloudinaryCheck() {
+  const [state, setState] = useState<{ loading: boolean; ok?: boolean; text?: string }>({ loading: false });
+  const run = async () => {
+    setState({ loading: true });
+    try {
+      const r = await fetch("/api/admin/cloudinary/check", adminRequest());
+      const d = await r.json();
+      setState({
+        loading: false,
+        ok: !!d.ok,
+        text: d.ok ? `Collegamento a Cloudinary corretto (account ${d.cloudName}).` : CHECK_TEXT[d.problem] ?? `Problema: ${d.problem}`,
+      });
+    } catch {
+      setState({ loading: false, ok: false, text: "Verifica non riuscita, riprova." });
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <button type="button" onClick={run} disabled={state.loading} className="text-xs text-primary underline underline-offset-4 disabled:opacity-50">
+        {state.loading ? "Verifica in corso..." : "Verifica collegamento Cloudinary"}
+      </button>
+      {state.text && (
+        <p className={`text-xs rounded-lg px-3 py-2 ${state.ok ? "bg-primary/10 text-foreground" : "bg-destructive/10 text-foreground border border-destructive/40"}`}>
+          {state.ok ? "✓ " : "⚠ "}
+          {state.text}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function EntriesPanel({ costumes, onChanged }: { costumes: Costume[] | undefined; onChanged: () => void }) {
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState<number | "toggle" | null>(null);
@@ -277,6 +317,8 @@ function EntriesPanel({ costumes, onChanged }: { costumes: Costume[] | undefined
           <span className={`absolute top-1 w-5 h-5 rounded-full bg-background transition-all ${results.entriesOpen && available ? "left-6" : "left-1"}`} />
         </button>
       </div>
+
+      <CloudinaryCheck />
 
       {pending.length === 0 ? (
         <p className="text-xs text-muted-foreground">Nessuna iscrizione da approvare.</p>

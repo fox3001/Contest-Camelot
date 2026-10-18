@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useGetActiveSession, getGetActiveSessionQueryKey, useRegisterVoter } from "@workspace/api-client-react";
 import { getDeviceId, getLastNickname, getStoredVoter, setStoredVoter } from "@/lib/storage";
 import { useTheme } from "@/lib/theme";
+import { OrganizerLink } from "@/components/OrganizerLink";
 
 const ERROR_MESSAGES: Record<string, string> = {
   nickname_taken: "Nickname già in uso, scegline un altro.",
@@ -42,6 +43,7 @@ function WaitingScreen({ entriesOpen, onEntry }: { entriesOpen: boolean; onEntry
           <EntryLink onClick={onEntry} />
         </div>
       )}
+      <OrganizerLink />
     </div>
   );
 }
@@ -259,6 +261,8 @@ export default function Home() {
         </motion.p>
 
         {session.entriesOpen && <EntryLink onClick={() => setLocation("/iscriviti")} />}
+
+        <OrganizerLink />
       </motion.div>
     </div>
   );

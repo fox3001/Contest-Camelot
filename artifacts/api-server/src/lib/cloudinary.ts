@@ -14,7 +14,9 @@ type Config = { cloudName: string; apiKey: string; apiSecret: string };
 
 function parse(url: string | undefined): Config | null {
   if (!url) return null;
-  const m = url.trim().match(/^cloudinary:\/\/([^:]+):([^@]+)@([^/?#]+)/);
+  // Tollera gli errori di copia più comuni: "CLOUDINARY_URL=" davanti, simboli < >, spazi, virgolette
+  const cleaned = url.trim().replace(/^CLOUDINARY_URL\s*=\s*/i, "").replace(/[<>\s"']/g, "");
+  const m = cleaned.match(/^cloudinary:\/\/([^:]+):([^@]+)@([^/?#]+)/);
   if (!m) {
     logger.error("CLOUDINARY_URL non valida: formato atteso cloudinary://API_KEY:API_SECRET@CLOUD_NAME");
     return null;
@@ -23,6 +25,7 @@ function parse(url: string | undefined): Config | null {
 }
 
 const config = parse(process.env.CLOUDINARY_URL);
+export const cloudinaryParseError = !!process.env.CLOUDINARY_URL && !config;
 if (!config) logger.warn("CLOUDINARY_URL non impostata: le iscrizioni con foto sono disattivate.");
 
 export function cloudinaryEnabled(): boolean {
@@ -62,16 +65,45 @@ export function signedUpload(folder: string) {
   };
 }
 
-/** Verifica che un upload arrivi davvero dal nostro account e dalla cartella della sessione. */
-export function isOwnUpload(imageUrl: string, publicId: string, sessionId: number): boolean {
+/**
+ * Verifica che la foto sia davvero sul nostro account Cloudinary.
+ * Negli account recenti ("dynamic folders") l'id della foto può non contenere
+ * la cartella, quindi la cartella non è obbligatoria: conta che sia il nostro account.
+ */
+export function isOwnUpload(imageUrl: string, publicId: string, _sessionId: number): boolean {
   if (!config) return false;
-  const folder = folderFor(sessionId) + "/";
   return (
     imageUrl.startsWith(`https://res.cloudinary.com/${config.cloudName}/image/upload/`) &&
-    publicId.startsWith(folder) &&
-    /^[\w\-/]+$/.test(publicId) &&
+    publicId.length > 0 &&
+    publicId.length <= 200 &&
+    /^[\w\-/.]+$/.test(publicId) &&
     imageUrl.includes(publicId)
   );
+}
+
+/**
+ * Controlla che nome account, chiave e password segreta siano giusti
+ * chiamando l'API "ping" di Cloudinary.
+ */
+export async function checkConnection(): Promise<{ ok: boolean; problem?: string; cloudName?: string }> {
+  if (!config) return { ok: false, problem: "missing" };
+  try {
+    const auth = Buffer.from(`${config.apiKey}:${config.apiSecret}`).toString("base64");
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${config.cloudName}/ping`, {
+      headers: { Authorization: `Basic ${auth}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) return { ok: true, cloudName: config.cloudName };
+    const body: any = await res.json().catch(() => ({}));
+    const msg: string = body?.error?.message ?? "";
+    if (res.status === 401 && /api_key/i.test(msg)) return { ok: false, problem: "api_key", cloudName: config.cloudName };
+    if (res.status === 401) return { ok: false, problem: "secret", cloudName: config.cloudName };
+    if (res.status === 404 || /cloud_name/i.test(msg)) return { ok: false, problem: "cloud_name", cloudName: config.cloudName };
+    return { ok: false, problem: `http_${res.status}: ${msg}`.slice(0, 200), cloudName: config.cloudName };
+  } catch (err) {
+    logger.warn({ err }, "Verifica Cloudinary non riuscita");
+    return { ok: false, problem: "unreachable", cloudName: config.cloudName };
+  }
 }
 
 /** Cancella una foto da Cloudinary (best effort: un errore non blocca l'operazione). */
