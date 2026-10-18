@@ -489,6 +489,75 @@ function HuntPanel({ costumes }: { costumes: Costume[] | undefined }) {
   );
 }
 
+/** 5 persone finte (iscritte con un costume e che hanno votato) per provare l'app. */
+function DemoPanel({ onChanged }: { onChanged: () => void }) {
+  const [, setLocation] = useLocation();
+  const [count, setCount] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const call = async (method: string) => {
+    const r = await fetch("/api/admin/demo", { method, ...adminRequest() });
+    if (r.status === 401) {
+      clearAdminToken();
+      setLocation("/admin");
+      return;
+    }
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d?.error || "Operazione non riuscita, riprova.");
+    setCount(d.count ?? 0);
+  };
+
+  useEffect(() => {
+    call("GET").catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const run = async (method: "POST" | "DELETE") => {
+    if (method === "DELETE" && !window.confirm("Cancellare gli utenti di prova con i loro costumi e voti?")) return;
+    setBusy(true);
+    setMsg("");
+    try {
+      await call(method);
+      setMsg(method === "POST" ? "Fatto: 5 utenti di prova in gara, con i loro voti." : "Utenti di prova cancellati.");
+      onChanged();
+    } catch (e: any) {
+      setMsg(e?.message || "Operazione non riuscita, riprova.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow">
+      <div>
+        <h2 className="text-base font-medium text-foreground">Utenti di prova</h2>
+        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+          5 persone finte (Giulia R., marco_87, Fra, Luca B, Chiaretta) iscritte con un costume e che hanno già votato: utile per vedere l'app
+          piena prima della serata. Al posto della foto c'è una casella “Costume di …”. Ricordati di cancellarli prima dell'evento.
+        </p>
+      </div>
+      <p className="text-sm text-foreground">{count === null ? "…" : count > 0 ? `${count} utenti di prova presenti` : "Nessun utente di prova"}</p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => run("POST")}
+          className="flex-1 bg-primary text-primary-foreground rounded-xl py-3 text-sm font-semibold disabled:opacity-40"
+        >
+          {count ? "Ricrea" : "Crea 5 utenti di prova"}
+        </button>
+        {!!count && (
+          <button type="button" disabled={busy} onClick={() => run("DELETE")} className="flex-1 bg-muted text-foreground rounded-xl py-3 text-sm font-medium disabled:opacity-40">
+            Cancellali
+          </button>
+        )}
+      </div>
+      {msg && <p className="text-xs text-primary">{msg}</p>}
+    </div>
+  );
+}
+
 function PasswordPanel() {
   const [current, setCurrent] = useState<string | null>(null);
   const [show, setShow] = useState(false);
@@ -737,6 +806,7 @@ export default function AdminGestione() {
 
         <VoterCodesPanel />
 
+        <DemoPanel onChanged={refresh} />
         <PasswordPanel />
 
         <div>
