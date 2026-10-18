@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useListCostumes, useGetActiveSession, getGetActiveSessionQueryKey } from "@workspace/api-client-react";
-import { clearStoredVoter, getStoredVoter } from "@/lib/storage";
+import { clearStoredVoter, getDeviceId, getStoredVoter } from "@/lib/storage";
 import { optimizedImage } from "@/lib/images";
 import { useTheme } from "@/lib/theme";
 import { OrganizerLink } from "@/components/OrganizerLink";
@@ -92,8 +92,18 @@ export default function Vote() {
   const { data: costumes, isLoading } = useListCostumes({ query: { refetchInterval: 10000 } as any });
   const entriesOpen = !!session?.entriesOpen;
 
+  // Il mio costume (iscritto da questo telefono): non si può votare
+  const [ownId, setOwnId] = useState<number | null>(null);
+  const costumeCount = costumes?.length ?? 0;
   useEffect(() => {
-    if (!voterToken) setLocation("/");
+    fetch(`/api/entries/mine?deviceId=${encodeURIComponent(getDeviceId())}`)
+      .then((r) => (r.ok ? r.json() : { entry: null }))
+      .then((d) => setOwnId(d.entry?.status === "approved" ? d.entry.id : null))
+      .catch(() => {});
+  }, [costumeCount]);
+
+  useEffect(() => {
+    if (!voterToken) setLocation("/entra");
   }, [voterToken, setLocation]);
 
   useEffect(() => {
@@ -105,7 +115,7 @@ export default function Vote() {
     // Token di una sessione diversa: serve registrarsi di nuovo
     if (stored?.sessionId && String(session.id) !== stored.sessionId) {
       clearStoredVoter();
-      setLocation("/");
+      setLocation("/entra");
     }
   }, [session, stored?.sessionId, setLocation]);
 
@@ -115,7 +125,7 @@ export default function Vote() {
       .then((r) => {
         if (r.status === 404) {
           clearStoredVoter();
-          setLocation("/");
+          setLocation("/entra");
           return [];
         }
         return r.ok ? r.json() : [];
@@ -154,6 +164,12 @@ export default function Vote() {
         body: JSON.stringify({ voterToken, votes: [{ costumeId, score }] }),
       });
       if (res.status === 403) {
+        const body = await res.json().catch(() => ({}));
+        if (body?.error === "own_costume") {
+          setOwnId(costumeId);
+          setStatus((prev) => ({ ...prev, [costumeId]: "error" }));
+          return;
+        }
         setLocation("/closed");
         return;
       }
@@ -163,9 +179,9 @@ export default function Vote() {
     }
   };
 
-  const savedCount = Object.values(status).filter((s) => s === "saved").length;
   const errorCount = Object.values(status).filter((s) => s === "error").length;
-  const allVoted = costumes && costumes.length > 0 && costumes.every((c) => status[c.id] === "saved");
+  const votable = (costumes ?? []).filter((c) => c.id !== ownId);
+  const allVoted = votable.length > 0 && votable.every((c) => status[c.id] === "saved");
 
   if (isLoading) {
     return (
@@ -234,7 +250,7 @@ export default function Vote() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              {savedCount}/{costumes.length} votati
+              {votable.filter((c) => status[c.id] === "saved").length}/{votable.length} votati
             </p>
           </div>
           {costumes.length > 6 && (
@@ -316,9 +332,15 @@ export default function Vote() {
                   </AnimatePresence>
                 </div>
 
-                <StarRating score={votes[costume.id] ?? 0} onChange={handleVoteChange} costumeId={costume.id} disabled={st === "saving"} />
+                {costume.id === ownId ? (
+                  <p className="text-center text-sm text-primary py-2">
+                    ✦ Il tuo costume <span className="text-muted-foreground">· non puoi votarlo</span>
+                  </p>
+                ) : (
+                  <StarRating score={votes[costume.id] ?? 0} onChange={handleVoteChange} costumeId={costume.id} disabled={st === "saving"} />
+                )}
 
-                {st === "error" && (
+                {st === "error" && costume.id !== ownId && (
                   <p className="mt-2 text-center text-xs text-destructive">Voto non salvato. Tocca di nuovo una stella per riprovare.</p>
                 )}
               </div>

@@ -21,7 +21,7 @@ import {
 } from "@workspace/api-client-react";
 import { optimizedImage } from "@/lib/images";
 import { useQueryClient } from "@tanstack/react-query";
-import { adminRequest, clearAdminToken, getAdminToken } from "@/lib/storage";
+import { adminRequest, clearAdminToken, getAdminToken, setAdminToken } from "@/lib/storage";
 
 const MAX_COSTUMES = 180;
 
@@ -377,6 +377,89 @@ function EntriesPanel({ costumes, onChanged }: { costumes: Costume[] | undefined
   );
 }
 
+function PasswordPanel() {
+  const [current, setCurrent] = useState<string | null>(null);
+  const [show, setShow] = useState(false);
+  const [next, setNext] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/password", adminRequest())
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setCurrent(d.password))
+      .catch(() => {});
+  }, []);
+
+  const save = async () => {
+    setMsg(null);
+    if (next.trim().length < 4) return setMsg({ ok: false, text: "Almeno 4 caratteri." });
+    setBusy(true);
+    try {
+      const r = await fetch("/api/admin/password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...(adminRequest().headers as Record<string, string>) },
+        body: JSON.stringify({ password: next.trim() }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d?.error);
+      setAdminToken(d.token);
+      setCurrent(next.trim());
+      setNext("");
+      setShow(true);
+      setMsg({
+        ok: true,
+        text: d.backup
+          ? "Password cambiata. Copia aggiornata su Cloudinary: Media Library → cartella contest-camelot → password-admin.txt."
+          : "Password cambiata. La copia su Cloudinary non è riuscita (controlla il collegamento Cloudinary): segnatela.",
+      });
+    } catch (e: any) {
+      setMsg({ ok: false, text: e?.message || "Cambio non riuscito, riprova." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow">
+      <div>
+        <h2 className="text-base font-medium text-foreground">Password del pannello</h2>
+        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+          Cambiandola, gli altri dispositivi entrati come admin dovranno rifare l'accesso.
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="flex-1 font-mono text-sm bg-background border border-input rounded-xl px-4 py-3 text-foreground truncate">
+          {current === null ? "…" : show ? current : "•".repeat(Math.min(12, current.length || 8))}
+        </span>
+        <button type="button" onClick={() => setShow((v) => !v)} className="bg-muted text-foreground text-xs rounded-lg px-3 py-3 shrink-0">
+          {show ? "Nascondi" : "Mostra"}
+        </button>
+      </div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+          placeholder="Nuova password"
+          maxLength={100}
+          autoComplete="off"
+          className="flex-1 bg-background border border-input rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+          aria-label="Nuova password"
+        />
+        <button type="button" onClick={save} disabled={busy || !next.trim()} className="bg-primary text-primary-foreground text-sm font-semibold rounded-xl px-4 disabled:opacity-50 shrink-0">
+          {busy ? "..." : "Cambia"}
+        </button>
+      </div>
+      {msg && <p className={`text-xs rounded-lg px-3 py-2 ${msg.ok ? "bg-primary/10 text-foreground" : "bg-destructive/10 text-foreground"}`}>{msg.text}</p>}
+      <p className="text-[11px] text-muted-foreground leading-relaxed">
+        Se la dimentichi: Cloudinary → Media Library → contest-camelot → password-admin.txt, oppure nel database Neon (SQL Editor:{" "}
+        <span className="font-mono">select value from app_settings where key = 'admin_password'</span>).
+      </p>
+    </div>
+  );
+}
+
 export default function AdminGestione() {
   const [, setLocation] = useLocation();
   const token = getAdminToken();
@@ -539,6 +622,8 @@ export default function AdminGestione() {
         <EntriesPanel costumes={costumes} onChanged={refresh} />
 
         <VoterCodesPanel />
+
+        <PasswordPanel />
 
         <div>
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-3">

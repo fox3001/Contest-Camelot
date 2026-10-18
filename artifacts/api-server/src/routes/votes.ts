@@ -84,6 +84,18 @@ router.post("/", async (req, res) => {
       return;
     }
 
+    // Non si vota il proprio costume (iscritto dallo stesso telefono)
+    if (voter.deviceId) {
+      const own = await db
+        .select({ id: costumesTable.id })
+        .from(costumesTable)
+        .where(and(eq(costumesTable.deviceId, voter.deviceId), inArray(costumesTable.id, ids)));
+      if (own.length > 0) {
+        res.status(403).json({ error: "own_costume", message: "Non puoi votare il tuo costume" });
+        return;
+      }
+    }
+
     await db
       .insert(votesTable)
       .values(ids.map((costumeId) => ({ voterId: voter.id, costumeId, score: byCostume.get(costumeId)! })))

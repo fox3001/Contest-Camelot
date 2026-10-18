@@ -128,3 +128,41 @@ export async function destroyImage(publicId: string | null | undefined): Promise
     logger.warn({ err, publicId }, "Cancellazione foto Cloudinary non riuscita");
   }
 }
+
+/**
+ * Carica un piccolo file di testo PRIVATO (tipo "authenticated"): non ha un link pubblico,
+ * si vede solo dalla console Cloudinary (Media Library). Sovrascrive la versione precedente.
+ */
+export async function uploadPrivateText(fileName: string, text: string): Promise<boolean> {
+  if (!config) return false;
+  try {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const params = {
+      folder: "contest-camelot",
+      invalidate: "true",
+      overwrite: "true",
+      public_id: fileName,
+      timestamp,
+      type: "authenticated",
+    };
+    const signature = signParams(params, config.apiSecret);
+    const form = new FormData();
+    for (const [k, v] of Object.entries(params)) form.append(k, String(v));
+    form.append("api_key", config.apiKey);
+    form.append("signature", signature);
+    form.append("file", new Blob([text], { type: "text/plain" }), fileName);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${config.cloudName}/raw/upload`, {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      logger.warn({ status: res.status, body: await res.text().catch(() => "") }, "Copia privata su Cloudinary non riuscita");
+      return false;
+    }
+    return true;
+  } catch (err) {
+    logger.warn({ err }, "Copia privata su Cloudinary non riuscita");
+    return false;
+  }
+}

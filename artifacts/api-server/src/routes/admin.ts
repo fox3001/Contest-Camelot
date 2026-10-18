@@ -17,10 +17,13 @@ import {
   loginBlocked,
   recordFailedLogin,
   requireAdmin,
+  getCurrentPassword,
+  useAdminPassword,
+  issueToken as newToken,
 } from "../lib/adminAuth";
 import { getCurrentSession, serializeSession } from "../lib/sessions";
 import { rankCostumes } from "../lib/ranking";
-import { checkConnection, cloudinaryEnabled, cloudinaryParseError, destroyImage, signedUpload } from "../lib/cloudinary";
+import { checkConnection, cloudinaryEnabled, cloudinaryParseError, destroyImage, signedUpload, uploadPrivateText } from "../lib/cloudinary";
 import { sanitizeTheme } from "../lib/theme";
 import { settingsTable } from "@workspace/db";
 
@@ -461,6 +464,40 @@ router.put("/theme", async (req, res) => {
     res.json({ theme: sanitizeTheme(row.value), updatedAt: row.updatedAt.toISOString() });
   } catch (err) {
     req.log.error({ err }, "Failed to save theme");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Password admin
+// ---------------------------------------------------------------------------
+
+router.get("/password", (_req, res) => {
+  res.json({ password: getCurrentPassword() });
+});
+
+router.put("/password", async (req, res) => {
+  try {
+    const next = typeof req.body?.password === "string" ? req.body.password.trim() : "";
+    if (next.length < 4 || next.length > 100) {
+      res.status(400).json({ error: "La password deve avere da 4 a 100 caratteri" });
+      return;
+    }
+    await db
+      .insert(settingsTable)
+      .values({ key: "admin_password", value: { password: next } })
+      .onConflictDoUpdate({ target: settingsTable.key, set: { value: { password: next }, updatedAt: new Date() } });
+    useAdminPassword(next);
+    // Copia di recupero privata su Cloudinary (si aggiorna a ogni cambio)
+    const when = new Date().toLocaleString("it-IT", { timeZone: "Europe/Rome" });
+    const backup = await uploadPrivateText(
+      "password-admin.txt",
+      `Password del pannello admin di Contest Camelot\n\n${next}\n\nAggiornata il ${when}\n`,
+    );
+    // Gli altri accessi scadono; chi l'ha cambiata riceve un nuovo accesso valido
+    res.json({ ok: true, backup, token: newToken() });
+  } catch (err) {
+    req.log.error({ err }, "Failed to change admin password");
     res.status(500).json({ error: "Internal server error" });
   }
 });

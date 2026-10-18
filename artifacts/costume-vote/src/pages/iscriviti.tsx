@@ -219,7 +219,9 @@ export default function Iscriviti() {
         {showForm && (
           <form onSubmit={submit} className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-md">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              {entry ? "Vuoi cambiare foto o nome? Carica di nuovo qui sotto." : "Una foto a figura intera, con buona luce. Un'iscrizione per telefono: per coppie e gruppi iscrive uno solo."}
+              {entry
+                ? "Vuoi cambiare foto o nome? Carica di nuovo qui sotto."
+                : "Una foto a figura intera, con buona luce. Un'iscrizione per telefono: per coppie e gruppi iscrive uno solo. Da questo telefono non potrai votare il tuo costume."}
             </p>
 
             <div>
